@@ -1,0 +1,2010 @@
+---
+title: "Nextflow and filtering pipeline"
+output: html_notebook
+---
+
+# A. ONE-TIME PANEL FILES
+
+Instructions to make one-time coordinate files needed for the STR calling pipeline.
+
+## 1. Extract loci in panel from full set of shiny server data (only needs to be done once per panel)
+
+The table of shiny server info only needs to be made once. It can then be saved on the HPC and used as input for the rest of the pipeline. Making the table will not be included as part of the pipeline.
+
+The details of this code may need to be updated if the list of loci included in the panel is provided in a different format.
+
+```{r}
+library(dplyr)
+
+# Import full shiny server microsatellite data table
+# format: row name,chr,start,end,width,period size,motif,motif family
+all_shiny <- read.delim("R:/homes/cal8150/Microsatellite-capture/Microsatellite-datasets/all_shiny.microsatellites.csv", sep = ",", header=T)
+
+# modify row name to include prefix "MS-"
+all_shiny$row.number <- paste0('MS-',all_shiny$row.number)
+
+# import Twist file listing the locus name and the number of probes associated with that locus
+status_all_probes <- read.delim("R:/homes/cal8150/Microsatellite-capture/Twist-panels/Scale up/NYU_Evrony_ScaleUp_Plus_MSI_TE-97721910_hg38/status_all_probes_NYU_Evrony_ScaleUp_Plus_MSI_TE-97721910_hg38_COUNTS.tsv")
+
+# keep only loci targeted by at least one probe ("passing" loci)
+status_passing_loci <- status_all_probes[status_all_probes$PROBE_COUNT == 1 | status_all_probes$PROBE_COUNT == 2,]
+
+# filter full dataset to include only the "passing" loci
+# filter by right joining on the locus name (include all rows found in passing loci table)
+scaleup_usats_full <- right_join(all_shiny, status_passing_loci, by = c("row.number" = "TARGET"))
+
+# drop column with number of probes
+scaleup_usats_full <- scaleup_usats_full[,-9]
+
+# Write to text file
+# Final file has 1-start, fully closed coordinates
+# Comma-separated file format:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+output.file <- file("R:/homes/cal8150/Microsatellite-capture/Twist-panels/Scale up/scaleup_usats_full.csv","wb")
+
+write.table(scaleup_usats_full, output.file, sep = ",", col.names = F, row.names = F, quote = F)
+
+close(output.file)
+
+```
+
+## 2. Make region files for each program based on panel loci
+
+### a. Make HipSTR input file using script (only needs to be done once per panel)
+
+convert_to_HipSTR.sh
+```{bash}
+#!/bin/bash
+
+# usage convert_to_HipSTR.sh [scaleup_usats_full.csv] [full path to output HipSTR region file]
+# Makes region file for HipSTR
+
+# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
+# scaleup_usats_full.csv has 1-start, fully closed coordinates
+# requires scaleup_usats_full.csv to be in the following order:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+
+awk -F',' -e '{print $2"\t"$3"\t"$4"\t"$6"\t"$5/$6"\t"$1}' $1 > $2
+
+# Output tab-delimited format: [chr] [start] [end] [period size] [number of repeats] [name]
+# Coordinates are 1-start, fully-closed
+```
+
+```{bash}
+# Command line input
+/scratch/cal8150/uSatAnalysis/scripts/convert_to_HipSTR.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/HipSTR/regions/scaleup_usats_hipstr.txt
+```
+
+
+### b. Make EH input file (only needs to be done once per panel)
+
+To make the input file, run convert_to_EH.sh, which will automatically run eh_to_json.r afterwards. The final output will be the JSON file.
+
+eh_to_json.r
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+# usage: Rscript eh_to_json.r [temp file from convert_to_EH.sh script] [output json]
+# Script will run automatically from convert_to_EH.sh
+# Input file from convert_to_EH.sh is in the following tab-delimited format:
+# [LocusId] [LocusStructure] [ReferenceRegion] [VariantType]
+
+library(dplyr)
+library(jsonlite)
+
+# Import arguments from command line (in this case, from convert_to_EH.sh)
+args <- commandArgs(trailingOnly = T)
+
+# Read bed file of loci created in convert_to_EH.sh
+eh_loci <- read.delim(args[1])
+
+# Convert bed file to JSON format
+# Use "pretty = T" to get proper formatting with new lines and indents
+panel_json <- toJSON(eh_loci, pretty = T)
+
+# Write JSON file to file name given to convert_to_EH.sh
+write(panel_json, args[2])
+```
+
+convert_to_EH.sh
+```{bash}
+#!/bin/bash
+
+# Usage: convert_to_EH.sh [scaleup_usats_full.csv] [full path to EH json output file]
+
+# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
+# scaleup_usats_full.csv format: row.number,seqnames,start,end,width,period.size,motif,motif.family
+# scaleup_usats_full.csv has 1-start, fully closed coordinates
+
+# Temp file is in the following tab-delimited format:
+# [LocusId] [LocusStructure] [ReferenceRegion] [VariantType]
+# make temp file in current directory so it can be accessed by R
+# script subtracts 1 from shiny server start coordinate to make 0-based, half open (BED format)
+# Final output is JSON file for ExpansionHunter 
+
+OUT=$(mktemp -p .)
+
+echo -e "LocusId\tLocusStructure\tReferenceRegion\tVariantType" > ${OUT}
+awk -F',' -e '{print $1"\t("$7")\*\t"$2":"($3-1)"-"$4"\tRepeat"}' $1 >> ${OUT}
+
+# remove loci that cause ExpansionHunter to abort (no way to force program to skip these loci)
+# Error: too many Ns in nearby area
+sed -i '/MS-187187/d' ${OUT}
+sed -i '/MS-499929/d' ${OUT}
+sed -i '/MS-553432/d' ${OUT}
+sed -i '/MS-710766/d' ${OUT}
+
+# Send output to R script for conversion to JSON format
+Rscript /scratch/cal8150/uSatAnalysis/scripts/eh_to_json.r ${OUT} $2
+
+# Delete temp file when finished
+rm ${OUT}
+```
+
+
+```{bash}
+# Command line input
+/scratch/cal8150/uSatAnalysis/scripts/convert_to_EH.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/expansionhunter/scaleup_usats_eh.json
+```
+
+
+### c. Make GangSTR input file (only needs to be done once per panel)
+
+convert_to_GangSTR.sh
+```{bash}
+#!/bin/bash
+
+# usage convert_to_GangSTR.sh [scaleup_usats_full.csv] [full path to GangSTR input file]
+
+# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
+# scaleup_usats_full.csv has 1-start, fully closed coordinates
+# requires scaleup_usats_full.csv to be in the following order:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+
+awk -F',' -e '{print $2"\t"$3"\t"$4"\t"$6"\t"$7}' $1 > $2
+
+# Output tab-delimited format: [chr] [start] [end] [period size] [motif]
+# Coordinates are 1-start, fully-closed
+```
+
+```{bash}
+# Command line input
+/scratch/cal8150/uSatAnalysis/scripts/convert_to_GangSTR.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/GangSTR/scaleup_usats_gangstr.txt
+```
+
+
+### d. Make bedtools input file (only needs to be done once per panel)
+
+convert_to_bedtools.sh
+```{bash}
+#!/bin/bash
+
+# usage convert_to_bedtools.sh [scaleup_usats_full.csv] [full path to bedtools input file]
+
+# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
+# scaleup_usats_full.csv has 1-start, fully closed coordinates
+# requires scaleup_usats_full.csv to be in the following order:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+
+awk -F',' -e '{print $2"\t"($3-1)"\t"$4"\t"$1}' $1 > $2
+
+# Output tab-delimited BED file: [chr] [start] [end] [locus name]
+# Coordinates are 0-start, half-open
+```
+
+```{bash}
+# Command line input
+
+/scratch/cal8150/uSatAnalysis/scripts/convert_to_bedtools.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/uSatAnalysis/scaleup_usats_bedtools.bed
+```
+
+
+### e. Make Picard interval list
+
+bed_to_interval_list.sh
+```{bash}
+#!/bin/bash
+
+# SBATCH --time=100
+
+
+# Usage: bed_to_interval_list.sh [scaleup_usats_full.csv] [scaleup_merged_probes.txt] [reference genome dictionary file]
+
+# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
+# scaleup_usats_full.csv has 1-start, fully closed coordinates
+# requires scaleup_usats_full.csv to be in the following order:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+
+# scaleup_merged_probes.txt is a txt file that contains the coordinates of all regions covered by probes
+# scaleup_merged_probes.txt has 1-start, fully closed coordinates
+# requires scaleup_merged_probes.txt to be in the following order:
+# [chr] [start] [end] [locus name]
+
+
+module load jdk/11.0.9
+
+USAT=$(mktemp -p .)
+BAIT=$(mktemp -p .)
+
+awk -F',' -e '{print $2"\t"($3-1)"\t"$4}' $1 > ${USAT}
+awk -F'\t' -e '{print $1"\t"($2-1)"\t"$3}' $2 > ${BAIT}
+
+java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
+          I=${USAT} \
+          O=$(dirname $2)/$(basename $1 .csv).interval_list \
+          SD=$3
+
+java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
+          I=${BAIT} \
+          O=$(dirname $2)/$(basename $2 .txt).interval_list \
+          SD=$3
+
+rm ${USAT}
+rm ${BAIT}
+
+# Interval list coordinates are 0-start, half-open
+```
+
+```{bash}
+# Command line input
+
+sbatch /scratch/cal8150/uSatAnalysis/scripts/bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/uSatAnalysis/scaleup_merged_probes.txt /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
+```
+
+
+######################
+
+NEXTFLOW PIPELINE
+
+######################
+
+
+# B. SAMPLE CSV
+
+Sample CSV format: sample ID,sex,path/to/read1.fastq,path/to/read2.fastq,trio name
+```{bash}
+NA12877,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R2_001.fastq.gz,1
+NA12889,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R2_001.fastq.gz,1
+NA12890,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R2_001.fastq.gz,1
+NA12878,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12878_S5_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12878_S5_L002_R2_001.fastq.gz,2
+NA12891,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12891_S8_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12891_S8_L002_R2_001.fastq.gz,2
+NA12892,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12892_S9_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12892_S9_L002_R2_001.fastq.gz,2
+NA12413,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12413_S1_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12413_S1_L002_R2_001.fastq.gz,3
+NA12414,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12414_S2_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12414_S2_L002_R2_001.fastq.gz,3
+NA12485,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12485_S3_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12485_S3_L002_R2_001.fastq.gz,3
+UDP-1101,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1101_S1_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1101_S1_L002_R2_001.fastq.gz,UDP-1100
+UDP-1102,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1102_S2_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1102_S2_L002_R2_001.fastq.gz,UDP-1100
+UDP-1104,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1104_S3_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1104_S3_L002_R2_001.fastq.gz,UDP-1100
+UDP-2101,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2101_S4_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2101_S4_L002_R2_001.fastq.gz,UDP-2100
+UDP-2102,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2102_S5_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2102_S5_L002_R2_001.fastq.gz,UDP-2100
+UDP-2103,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2103_S6_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2103_S6_L002_R2_001.fastq.gz,UDP-2100
+```
+
+
+# C. CONFIGURATION FILE
+
+nextflow.config
+```{bash}
+process.executor = 'slurm'
+
+
+/*
+SAMPLES
+*/
+
+// CSV with fields: sample,sex,read1,read2,trio
+params.samples = '/scratch/cal8150/uSatAnalysis/coriell_udp_samples.csv'
+
+
+// Reference genome
+params.reference = '/scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.fasta'
+params.reference_index = '/scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.fasta.fai'
+
+
+/*
+PANEL FILES
+*/
+
+// Panel metadata
+params.panel = '/scratch/cal8150/uSatAnalysis/loci/scaleup_usats_full.csv'
+// Probe coordinates in Picard format
+params.picard_probes = '/scratch/cal8150/uSatAnalysis/loci/scaleup_merged_probes.interval_list'
+// Microsatellite coordinates in Picard format
+params.picard_usats = '/scratch/cal8150/uSatAnalysis/loci/scaleup_usats_full.interval_list'
+// Microsatellite coordinates in HipSTR format
+params.hipstr_usats = '/scratch/cal8150/HipSTR/scaleup_usats_hipstr.txt'
+// Microsatellite coordinates in GangSTR format
+params.gangstr_usats = '/scratch/cal8150/GangSTR/scaleup_usats_gangstr.txt'
+// Microsatellite coordinates in Expansion Hunter format
+params.eh_usats = '/scratch/cal8150/expansionhunter/scaleup_usats_eh.json'
+// Microsatellite coordinates in BED format
+params.bedtools_usats = '/scratch/cal8150/uSatAnalysis/loci/scaleup_usats_bedtools.bed'
+
+
+/*
+RESULTS
+*/
+
+// Results directory
+params.results = '/scratch/cal8150/uSatAnalysis/results'
+// Basename for joint HipSTR VCF and final RDS file
+params.outputbasename = 'coriell_udp'
+
+// Template directory
+params.script_path = '/scratch/cal8150/uSatAnalysis/templates'
+
+
+/*
+PROGRAMS AND MODULES
+*/
+
+params.fastqc = 'fastqc/0.11.9'
+params.bwa = 'bwa/intel/0.7.17'
+params.samtools = 'samtools/intel/1.14'
+params.picard = '/scratch/projects/evronylab/bin/gatk/picard.jar'
+params.bcftools = 'bcftools/intel/1.14'
+params.hipstr = '/scratch/projects/evronylab/bin/HipSTR/HipSTR'
+params.gangstr = 'gangstr/intel/2.5.0'
+params.eh = 'expansion-hunter/5.0.0'
+params.bedtools = 'bedtools/intel/2.29.2'
+params.gatk = 'gatk/4.2.4.1'
+
+
+/*
+SCRIPT PARAMETERS
+*/
+
+// Number of files to split HipSTR input file into
+params.split = 50
+```
+
+
+# D. NEXTFLOW SCRIPT
+
+usat_calling.nf
+```{bash}
+// enable DSL2 syntax
+nextflow.enable.dsl=2
+
+
+/*
+
+  CHANNELS
+
+*/
+
+// load sample metadata and FASTQ paths
+samples_ch =
+Channel
+  .fromPath( params.samples )
+  .splitCsv()
+
+
+/*
+
+  WORKFLOW
+
+*/
+
+workflow {
+
+  FASTQC( samples_ch )
+  REMOVE_UMIS( samples_ch )
+  ALIGN_CRAM( REMOVE_UMIS.out )
+  PICARD( ALIGN_CRAM.out.cram )
+  SPLIT_REGIONS()
+  HIPSTR( ALIGN_CRAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), ALIGN_CRAM.out.index.collect() )
+  CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
+  SPLIT_VCF( samples_ch, CONCAT_VCF.out.joint_vcf )
+  EXPANSION_HUNTER( samples_ch.join(ALIGN_CRAM.out.cram) )
+  GANGSTR( samples_ch.join(ALIGN_CRAM.out.cram) )
+  BEDTOOLS_COVERAGE( ALIGN_CRAM.out.cram )
+  QUERY_HIPSTR( SPLIT_VCF.out.vcf )
+  QUERY_EH( EXPANSION_HUNTER.out.vcf )
+  QUERY_GANGSTR( GANGSTR.out.vcf )
+  JOIN_CALLS( samples_ch.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
+  JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )
+
+}
+
+
+/*
+
+  PROCESSES
+
+*/
+
+
+// QC raw sequencing data
+
+process FASTQC {
+
+  time '2h'
+  cache 'deep'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load FASTQ files
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+
+  output:
+    // save HTML reports
+    tuple val( sampleID ), path("*_fastqc.html")
+
+
+  script:
+  """
+  module load ${params.fastqc}
+
+  # make results directory if it doesn't already exist
+  mkdir -p \$(dirname ${params.results}/${sampleID}_results)
+
+  # run fastqc on read 1 and read 2 FASTQ files
+  fastqc ${read1} ${read2}
+
+  """
+}
+
+
+// Remove UMI sequence from read name if present
+// UMI in read name is not compatible with Picard MarkDuplicates
+
+process REMOVE_UMIS {
+
+    time '4h'
+    memory '16GB'
+    cpus 4
+    
+    input:
+      // load FASTQ files
+      tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+    
+    output:
+      // fastq files without UMI in read name
+      tuple val( sampleID ), path( "${read1.simpleName}_noUMI.fastq.gz" ), path( "${read2.simpleName}_noUMI.fastq.gz" )
+      
+    shell:
+    '''
+    zcat !{read1} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
+    gzip -c > $(basename !{read1} .fastq.gz)_noUMI.fastq.gz
+    
+    zcat !{read2} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
+    gzip -c > $(basename !{read2} .fastq.gz)_noUMI.fastq.gz
+
+    '''
+}
+
+
+// Make, sort, and index CRAM with PCR duplicates removed
+
+process ALIGN_CRAM {
+
+  time '10h'
+  cpus 12
+  memory '32 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load FASTQ files
+    tuple val( sampleID ), path( read1 ), path( read2 )
+
+  output:
+    // output channel for most processes
+    tuple val ( sampleID ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), emit: cram
+    path( "${sampleID}.markdup.metrics.txt" )
+
+    //output channels for HipSTR
+    path( "${sampleID}.cram" ), emit: hipstr
+    path( "${sampleID}.cram.crai" ), emit: index
+
+  script:
+  """
+
+  module load ${params.bwa}
+  module load ${params.samtools}
+  module load ${params.gatk}
+  
+
+  # Align to reference genome
+  # bwa mem -R [read group] -t 8 [reference fasta] [read 1 fastq] [read 2 fastq]
+  bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t 8 ${params.reference} ${read1} ${read2} > ${sampleID}.bam
+  
+  # Remove optical duplicates
+  java -jar ${params.picard} MarkDuplicates \\
+    I=${sampleID}.bam \\
+    O=${sampleID}.markdup.bam \\
+    REMOVE_DUPLICATES=false \\
+    METRICS_FILE=${sampleID}.markdup.metrics.txt \\
+    OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500 \\
+    ASSUME_SORT_ORDER=queryname \\
+    CLEAR_DT=false \\
+    REMOVE_SEQUENCING_DUPLICATES=true
+    
+  # Unmark duplicate reads
+  gatk UnmarkDuplicates \
+    -I ${sampleID}.markdup.bam \
+    -O ${sampleID}.unmarked.bam
+  
+  # Sort BAM  
+  java -jar ${params.picard} SortSam \\
+    I=${sampleID}.unmarked.bam \\
+    O=${sampleID}.unmarked.sorted.bam \\
+    SORT_ORDER=coordinate; samtools index ${sampleID}.unmarked.sorted.bam
+  
+  # Convert to CRAM
+  samtools view -F 2304 -C -T ${params.reference} --write-index -O cram -@4 -o ${sampleID}.cram##idx##${sampleID}.cram.crai ${sampleID}.unmarked.sorted.bam
+  """
+}
+
+
+// Check hybrid capture quality with Picard CollectHsMetrics
+
+process PICARD {
+
+  time '2h'
+
+  memory '4 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load CRAM
+    tuple val( sampleID ), path( cram ), path( index )
+
+  output:
+    // save Picard report
+    tuple val( sampleID ), path( "${sampleID}_picard_usats.txt" ), path( "${sampleID}_picard_probes.txt" )
+
+  script:
+  """
+  # run Picard with microsatellites as "target" coordinates
+  java -jar ${params.picard} CollectHsMetrics \\
+        I=${cram} \\
+        O=${sampleID}_picard_usats.txt \\
+        R=${params.reference} \\
+        BAIT_INTERVALS=${params.picard_probes} \\
+        TARGET_INTERVALS=${params.picard_usats}
+
+  # run Picard with probes as "target" coordinates
+  java -jar ${params.picard} CollectHsMetrics \\
+        I=${cram} \\
+        O=${sampleID}_picard_probes.txt \\
+        R=${params.reference} \\
+        BAIT_INTERVALS=${params.picard_probes} \\
+        TARGET_INTERVALS=${params.picard_probes}
+
+  """
+}
+
+
+// Divide HipSTR input file into 50 equal parts
+// Will use to submit smaller, faster jobs
+
+process SPLIT_REGIONS {
+
+  time '20m'
+
+  output:
+    // channel divided input files
+    path( "split_regions_*" ), emit: usats
+
+  script:
+  """
+  # use numerical suffixes to avoid file name overlap
+  split -n l/${params.split} --numeric-suffixes --additional-suffix=.txt ${params.hipstr_usats} split_regions_
+
+  """
+}
+
+
+// Run HipSTR jointly on all CRAMs using divided list of microsatellites
+
+process HIPSTR {
+
+  time '2h'
+
+  input:
+    // load CRAMs
+    // must be just CRAMs to make comma separated list for HipSTR
+    path( cram )
+
+    // load divided input files
+    path( usats )
+
+    // load all CRAM indexes
+    path( index )
+
+  output:
+    // channel for VCFs to be concatenated
+    path( "array_${usats}_hipstr.vcf.gz" ), emit: small_vcf
+
+    // channel for VCF indexes
+    path( "array_${usats}_hipstr.vcf.gz.csi" ), emit: index
+
+  script:
+  """
+  module load ${params.bcftools}
+  
+  # Do joint calling on all samples
+
+  # Make comma separated list of CRAMs
+  BAMS=\$(echo ${cram} | sed 's/ /,/g')
+
+  # run HipSTR
+  ${params.hipstr} \
+      --bams \${BAMS} \
+      --fasta ${params.reference} \
+      --regions ${usats} \
+      --str-vcf array_${usats}_hipstr.vcf.gz \
+      --min-reads 20 \
+      --max-str-len 150 \
+      --no-rmdup \
+      --output-filters; bcftools index array_${usats}_hipstr.vcf.gz
+
+  """
+}
+
+
+// Combine HipSTR VCFs into one VCF containing all samples and loci
+
+process CONCAT_VCF {
+
+  time '3h'
+
+  publishDir("${params.results}", mode: 'copy')
+
+  input:
+    // load all HipSTR VCFs
+    // must be just VCFs to output as list in script
+    path( small_vcf )
+
+    // load all HipSTR VCF indexes
+    path( index )
+
+  output:
+    // channel for combined VCF
+    tuple path( "${params.outputbasename}_hipstr.vcf.gz" ), path( "${params.outputbasename}_hipstr.vcf.gz.csi" ), emit: joint_vcf
+
+  script:
+  """
+  module load ${params.bcftools}
+
+  # concatenate all HipSTR VCFs and index combined VCF
+  bcftools concat --allow-overlaps ${small_vcf} | bcftools sort --output ${params.outputbasename}_hipstr.vcf.gz -Oz -;
+  bcftools index ${params.outputbasename}_hipstr.vcf.gz
+
+  """
+}
+
+
+// Split combined HipSTR VCF by sample
+
+process SPLIT_VCF {
+
+  time '2h'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load sample metadata
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+
+    // load combined HipSTR VCF
+    tuple path( joint_vcf ), path( index )
+
+  output:
+    // channel for individual VCFs
+    tuple val( sampleID ), path( "${sampleID}_hipstr.vcf.gz" ), emit: vcf
+
+  script:
+  """
+  module load ${params.bcftools}
+
+  # split combined VCF by sample ID
+  bcftools view -Oz -s ${sampleID} ${joint_vcf} > ${sampleID}_hipstr.vcf.gz
+
+  """
+}
+
+
+// Run Expansion Hunter on each sample individually
+
+process EXPANSION_HUNTER {
+
+  time '10h'
+
+  cpus 8
+
+  memory '48 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load sample metadata and CRAM
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio), path( cram ), path( index )
+
+  output:
+    // channel for Expansion Hunter VCFs
+    tuple val( sampleID ), path( "${sampleID}_eh.vcf.gz" ), path( "${sampleID}_eh.vcf.gz.csi" ), emit: vcf
+
+  script:
+  """
+
+  module load ${params.eh}
+  module load ${params.bcftools}
+
+  # The JSON file from convert_to_EH.sh specifies the regions to be analyzed (called a "variant catalog" by EH)
+  # Must convert M/F sex designation to male/female for Expansion Hunter
+
+  # define sex variable to fit Expansion Hunter syntax
+  if [ ${sex} == "M" ]
+  then
+    eh_sex="male"
+  else
+    eh_sex="female"
+  fi
+
+  # run Expansion Hunter
+  # zip and index the output VCF
+  ExpansionHunter --reads ${cram} \
+      --reference ${params.reference} \
+      --variant-catalog ${params.eh_usats} \
+      --output-prefix ${sampleID}_eh \
+      --sex \${eh_sex} \
+      --threads 12; bgzip -f ${sampleID}_eh.vcf; bcftools index ${sampleID}_eh.vcf.gz
+
+  """
+}
+
+
+// Run GangSTR on each sample individually
+
+process GANGSTR {
+
+  time '10h'
+
+  cpus 8
+
+  memory '48 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load sample metadata and CRAM
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), path( cram ), path( index )
+
+  output:
+    // channel for GangSTR VCFs
+    tuple val( sampleID ), path( "${sampleID}_gangstr.vcf.gz" ), path( "${sampleID}_gangstr.vcf.gz.csi" ), emit: vcf
+
+  script:
+  """
+  module load ${params.gangstr}
+  module load ${params.bcftools}
+
+  # run GangSTR
+  # zip and index the output VCF
+  GangSTR \
+      --bam ${cram} \
+      --ref ${params.reference} \
+      --regions ${params.gangstr_usats} \
+      --out ${sampleID}_gangstr \
+      --bam-samps ${sampleID} \
+      --samp-sex ${sex} \
+      --min-sample-reads 20 \
+      --nonuniform \
+      --frrweight 0 \
+      --spanweight 0 \
+      --flankweight 0; bgzip -f ${sampleID}_gangstr.vcf; bcftools index ${sampleID}_gangstr.vcf.gz
+  """
+}
+
+
+// Run bedtools coverage on each sample to get spanning read depth
+
+process BEDTOOLS_COVERAGE {
+
+  time '3h'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load CRAM
+    tuple val( sampleID ), path( cram ), path( index )
+
+  output:
+    // channel for bedtools file
+    tuple val( sampleID ), path( "${sampleID}_bedtools.txt" ), emit: table
+
+  script:
+  """
+  module load ${params.bedtools}
+
+  # Counts number of reads fully spanning microsatellite locus
+
+  # Make column titles
+  echo -e "name\tB_depth" > ${sampleID}_bedtools.txt
+
+  # get spanning read depth at each locus
+  bedtools coverage -sorted -g ${params.reference_index} -f 1.0 -a ${params.bedtools_usats} -b ${cram} | awk -e '{print \$4"\\t"\$5}' >> ${sampleID}_bedtools.txt
+
+  # final tab-delimited output: [name] [depth]
+
+  """
+}
+
+
+/*
+
+VCF DATA EXTRACTION
+  
+*/
+
+
+/*
+HipSTR fields: https://hipstr-tool.github.io/HipSTR/
+  ID - name of locus (for joining)
+  FORMAT/GT - indicates whether or not the locus has been genotyped (0/1/2 = genotyped, "." = missed)
+    Since HipSTR does joint calling, the genotype number may be higher than 2 if more than two genotypes are seen amongst all     samples
+  FORMAT/Q - quality of the call (from manual: "Posterior probability of unphased genotype")
+  FORMAT/GB - From manual: "Base pair differences of genotype from reference"
+    allele 1|allele 2 (ex: 0|0) (for genotyped alleles)
+  FORMAT/DP - From manual: "Number of valid reads used for sample’s genotype"
+  FORMAT/DSTUTTER - From manual: "Total number of reads with a stutter indel in the STR region"
+  FORMAT/DFLANKINDEL - From manual: "Total number of reads with an indel in the regions flanking the STR"
+  FORMAT/ALLREADS - gives number of spanning reads supporting a certain bp difference based on alignment (for all observed bp differences)
+  FORMAT/MALLREADS - gives number of spanning reads supporting a certain bp difference based on maximum likelihood haplotype (for all observed bp differences)
+  FORMAT/GLDIFF - From manual: "Difference in likelihood between the reported and next best genotypes"
+    Note: HipSTR only uses spanning reads to genotype
+    bp diff 1|# of supporting reads;bp diff 2|# of supporting reads (for all observed bp differences) (ex: -2|2;0|111;2|1)
+
+Why I chose these fields:
+  The GT field will be used to filter for samples with successful calls from each program.
+  The GB field will be used to obtain the genotypes from each caller.
+  The Q field will be used to eliminate genotype calls of low quality.
+  The DP and MALLREADS fields will be used to remove genotype calls with low coverage and few supporting spanning reads.
+*/
+
+
+// Extract relevant fields from HipSTR VCF and save in table
+
+process QUERY_HIPSTR {
+
+  time '1h'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load HipSTR VCF
+    tuple val( sampleID ), path( vcf )
+
+  output:
+    // channel for HipSTR data table
+    tuple val( sampleID ), path( "${sampleID}_hipstr_table.txt" ), emit: table
+
+  script:
+  """
+  module load ${params.bcftools}
+
+  # Extracts fields needed for quality filtering from each program's VCF
+
+  #make HipSTR table
+  echo -e "name\tH_GT\tH_GB\tH_Q\tH_DP\tH_DSTUTTER\tH_DFLANKINDEL\tH_ALLREADS\tH_MALLREADS\tH_GLDIFF" > ${sampleID}_hipstr_table.txt
+  bcftools query -f '%ID\t[%GT\t%GB\t%Q\t%DP\t%DSTUTTER\t%DFLANKINDEL\t%ALLREADS\t%MALLREADS\t%GLDIFF]\n' ${sampleID}_hipstr.vcf.gz >> ${sampleID}_hipstr_table.txt
+
+  """
+}
+
+
+/*
+Expansion Hunter fields: https://github.com/Illumina/ExpansionHunter and https://support-docs.illumina.com/SW/DRAGEN_v310/Content/SW/RepeatGenotyping.htm
+  INFO/VARID - name of locus (for joining)
+  INFO/REF - number of repeats in reference genome
+  FORMAT/GT - indicates whether or not the locus has been genotyped (0/1/2 = genotyped, "." = missed)
+  FORMAT/REPCN - the number of repeats in the allele (for genotyped alleles)
+      allele 1/allele 2 (ex: 14/15)
+  FORMAT/SO - From manual: "Type of reads that support the allele; can be SPANNING, FLANKING, or INREPEAT meaning that the reads span, flank, or are fully contained     in the repeat" (for genotyped alleles)
+      allele 1/allele 2 (ex: SPANNING/SPANNING)
+  FORMAT/ADSP - From manual: "Number of spanning reads consistent with the allele" (for genotyped alleles)
+      allele 1/allele 2 (ex: 93/67)
+  FORMAT/ADFL - From manual: "Number of flanking reads consistent with the allele" (for genotyped alleles)
+    Note: "flanking" reads in EH are reads that end in the repeat on one side
+    allele 1/allele 2
+  FORMAT/ADIR - From manual: "Number of in-repeat reads consistent with the allele" (for genotyped alleles)
+    Note: "in-repeat" reads are reads that fully consist of the repeat (the repeat is longer than the read length)
+    allele 1/allele 2
+  FORMAT/LC - the average coverage of the locus
+    
+Why I chose these fields:
+  The GT field will be used to filter for samples with successful calls from each program.
+  The REPCN field will be used to obtain the genotypes from each caller.bet
+  The SO field will be used to eliminate ExpansionHunter calls not made with spanning reads.
+  The ADSP field will be used to remove genotype calls with low coverage and few supporting spanning reads.
+*/
+
+// Extract relevant fields from Expansion Hunter VCF
+
+process QUERY_EH {
+
+  time '1h'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load Expansion Hunter VCF
+    tuple val( sampleID ), path( vcf ), path( index )
+
+  output:
+    // channel for Expansion Hunter data table
+    tuple val( sampleID ), path( "${sampleID}_eh_table.txt" ), emit: table
+
+  script:
+  """
+  module load ${params.bcftools}
+
+  # Extracts fields needed for quality filtering from each program's VCF
+
+  #make ExpansionHunter table
+  echo -e "name\tE_REF\tE_GT\tE_REPCN\tE_SO\tE_ADSP\tE_ADFL\tE_ADIR\tE_LC" > ${sampleID}_eh_table.txt
+  bcftools query -f '%INFO/VARID\t%INFO/REF\t[%GT\t%REPCN\t%SO\t%ADSP\t%ADFL\t%ADIR\t%LC]\n' ${sampleID}_eh.vcf.gz >> ${sampleID}_eh_table.txt
+
+  """
+}
+
+
+/*
+GangSTR fields: https://github.com/gymreklab/GangSTR
+  CHR and POS - chromosome and start position (for joining)
+  INFO/REF - number of repeats in reference genome
+  FORMAT/GT - indicates whether or not the locus has been genotyped (0/1/2 = genotyped, "." = missed)
+  FORMAT/Q - quality score
+  FORMAT/REPCN - From manual: "Genotype given in number of copies of the repeat motif" (for genotyped alleles)
+      allele 1,allele 2 (ex: 13,14)
+  FORMAT/REPCI - From manual: "95% Confidence interval for each allele based on bootstrapping"
+  FORMAT/DP - From manual: "Read Depth (number of informative reads)"
+  FORMAT/RC - number of reads in each class (enclosing, spanning, FRR, flanking)
+    # of enclosing reads,# of spanning reads,#number of FRR reads,# of flanking reads
+    Note: see GangSTR paper for read type definitions
+  FORMAT/ENCLREADS - gives number of spanning reads supporting a certain repeat count (from manual: "Summary of reads in enclosing class in | separated key-value pairs. Keys are number of copies and values show number of reads with that many copies.") (for all observed bp differences)
+      Note: "enclosing" reads in GangSTR are defined the same way as "spanning" reads in HipSTR and ExpansionHunter 
+      repeat count 1,# of supporting reads|repeat count 2,# of supporting reads (ex: 6,2|13,39|14,38)
+  FORMAT/FLNKREADS - gives number of flanking reads supporting a certain repeat count (from manual: "Summary of reads in flanking class in | separated key-value pairs. Keys are number of copies and values show number of reads with that many copies.")
+      Note: "flanking" reads in GangSTR are reads in which the repeat is at the end of the read.
+      repeat count 1,# of supporting reads|repeat count 2,# of supporting reads
+      
+Why I chose these fields:
+  The GT field will be used to filter for samples with successful calls from each program.
+  The REPCN field will be used to obtain the genotypes from each caller.
+  The Q field will be used to eliminate genotype calls of low quality.
+  The DP, ENCLREADS, and FLNKREADS fields will be used to remove genotype calls with low coverage and few supporting spanning reads.
+*/
+
+// Extract relevant fields from GangSTR VCF
+
+process QUERY_GANGSTR {
+
+  time '1h'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    tuple val( sampleID ), path( vcf ), path( index )
+
+  output:
+    tuple val( sampleID ), path( "${sampleID}_gangstr_table.txt" ), emit: table
+
+  script:
+  """
+  module load ${params.bcftools}
+
+  # Extracts fields needed for quality filtering from each program's VCF
+
+  #make GangSTR table
+  echo -e "chr\tstart\tG_REF\tG_GT\tG_Q\tG_REPCN\tG_REPCI\tG_DP\tG_RC\tG_ENCLREADS\tG_FLNKREADS" > ${sampleID}_gangstr_table.txt
+  bcftools query -f '%CHROM\t%POS\t%INFO/REF\t[%GT\t%Q\t%REPCN\t%REPCI\t%DP\t%RC\t%ENCLREADS\t%FLNKREADS]\n' ${sampleID}_gangstr.vcf.gz >> ${sampleID}_gangstr_table.txt
+
+  """
+}
+
+
+// Join panel metadata with data tables from HipSTR, Expansion Hunter, GangSTR, and bedtools
+
+process JOIN_CALLS {
+
+  time '1h'
+
+  input:
+    // load data tables from HipSTR, Expansion Hunter, GangSTR, and bedtools
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), path( hipstr ), path( expansionhunter ), path( gangstr ), path( bedtools )
+
+  output:
+    // channel for sample data frames
+    path( "${sampleID}.rds" ), emit: rds
+
+  script:
+  """
+  Rscript ${params.script_path}/join_str_calls_nextflow.r ${params.panel} ${sampleID} ${sex} ${trio} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
+
+  """
+}
+
+
+// Combine all sample data frames in R list structure
+
+process JOIN_SAMPLES {
+
+  time '1h'
+  memory '8 GB'
+
+  publishDir("${params.results}", mode: 'copy')
+
+  input:
+    // load all sample data frames
+    path( RDS )
+
+  output:
+    // save final R list
+    path( "${params.outputbasename}.rds" )
+
+  script:
+  """
+  # arguments: [RDS files] [basename for joint list]
+  # Nextflow automatically outputs all RDS files in space-separated list
+  Rscript ${params.script_path}/join_str_samples_nextflow.r ${RDS} ${params.outputbasename}
+
+  """
+}
+```
+
+
+# E. TEMPLATE SCRIPTS
+
+### 1. join_str_calls_nextflow.r
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+# usage: Rscript join_str_calls_nextflow.r ${panel} ${sampleID} ${sex} ${trio} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
+
+# Panel CSV is a csv that contains info directly from the shiny server for all loci in panel
+# CSV has 1-start, fully closed coordinates
+# requires CSV to be in the following order:
+# row.number,seqnames,start,end,width,period.size,motif,motif.family
+
+# HipSTR can't distinguish the sex of samples when performing joint calling
+# This results in 2 alleles called on chromosomes X and Y in males when only one allele is present
+# From the two alleles given in the H_GB field, we will choose the one associated with the higher H_MALLREADS count as the "true" allele
+# If the true allele is in the allele 2 position initially in H_GB and H_MALLREADS, H_GB_1 and H_MALLREADS_1 will be swapped with H_GB_2 and H_MALLREADS_2
+# This ensures that allele 1 in the final table is always the allele with most reads on the sex chromosomes
+# We will replace H_REPDIFF_2 on sex chromosomes with -999 to indicate allele 2 should not be considered for concordance
+
+
+library(dplyr)
+library(tidyr)
+
+args <- commandArgs(trailingOnly = T)
+
+# load list of panel loci and metadata
+panel_loci <- as.data.frame(read.csv(args[1], header = F))
+# add column names to panel loci data frame
+colnames(panel_loci) <- c("name","chr","start","end","width","period.size","motif","motif.family")
+
+# sample ID
+sampleID <- args[2]
+
+# sample sex (M or F)
+sex <- args[3]
+
+# trio ID
+trio <- args[4]
+
+# load results table for each caller and bedtools
+# results table for HipSTR from QUERY_HIPSTR
+HipSTR <- read.delim(args[5])
+# results table for Expansion Hunter from QUERY_EH
+EH <- read.delim(args[6])
+# results table for GangSTR from QUERY_GANGSTR
+GangSTR <- read.delim(args[7])
+# table of bedtools coverage from BEDTOOLS_COVERAGE
+bedtools <- read.delim(args[8])
+
+
+# make function for obtaining total read depth from MALLREADS, ALLREADS, and ENCLREADS
+readdepth <- function(x) {sum(suppressWarnings(as.numeric(x))[seq(0, length(x), by=2)])}
+
+
+
+# generate data frame containing all metadata and call information for the sample
+results <- 
+  # add sample ID and trio ID as columns to the panel loci data frame
+  panel_loci %>% mutate(sampleID = sampleID) %>% mutate(sex = sex) %>% mutate(trio = trio) %>%
+  # left join caller and bedtools data files to panel loci data frame
+  left_join(., HipSTR, by = "name") %>% left_join(., EH, by = "name") %>% 
+  left_join(., GangSTR, by = c("chr","start")) %>% left_join(., bedtools, by = c("name")) %>%
+  # replace any EH genotype that has B_depth of 0 with "./." on autosomes and "." on sex chromosomes
+  mutate(E_GT = case_when(B_depth == 0 & sex == "M" & chr != "chrX" & chr != "chrY" ~ "./.",
+                          B_depth == 0 & sex == "F" ~ "./.",
+                          B_depth == 0 & sex == "M" & (chr == "chrX" | chr == "chrY") ~ ".", TRUE ~ E_GT)) %>%
+  # replace any B_depth of 0 or B_depth with no EH call with NA for accurate calculation of mean depth
+  mutate(B_depth = case_when(B_depth == 0 ~ NA_integer_, E_GT == "./." | E_GT == "." ~ NA_integer_, TRUE ~ B_depth)) %>%
+  # separate fields giving base pair/repeat difference from reference into column for each allele
+  separate(H_GB,c("H_GB_1_TEMP","H_GB_2_TEMP"), sep="\\|", fill="right", remove=F) %>%
+  separate(E_REPCN, c("E_REPCN_1","E_REPCN_2"), sep="/", fill="right", remove=F) %>%
+  separate(G_REPCN, c("G_REPCN_1","G_REPCN_2"), sep=",", fill="right", remove=F) %>%
+  # split ADSP field to get spanning read depth for Expansion Hunter alleles
+  separate(E_ADSP, c("E_ADSP_1","E_ADSP_2"), sep="/", fill="right", remove=F) %>%
+  # convert columns from character to numeric where necessary
+  mutate_at(c("H_Q","H_DP","H_DFLANKINDEL","H_DSTUTTER", "H_GB_1_TEMP", "H_GB_2_TEMP",
+              "E_REPCN_1","E_REPCN_2","E_ADSP_1","E_ADSP_2",
+              "G_Q","G_DP","G_REPCN_1","G_REPCN_2"), as.numeric) %>%
+  # add columns to get repeat count difference from reference
+  mutate(E_REPDIFF_1 = E_REPCN_1-E_REF) %>% mutate(E_REPDIFF_2 = E_REPCN_2-E_REF) %>%
+  mutate(G_REPDIFF_1 = G_REPCN_1-G_REF) %>% mutate(G_REPDIFF_2 = G_REPCN_2-G_REF)
+
+# split MALLREADS and match to each allele from HipSTR call to get spanning read depth (maximum-likelihood-based)
+results$H_MALLREADS_1_TEMP <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,"\\|(.*)"), "\\1", y[grep(paste0("^",x,"\\|"),y)])}, x=results$H_GB_1_TEMP,
+y=strsplit(results$H_MALLREADS,";"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+results$H_MALLREADS_2_TEMP <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,"\\|(.*)"), "\\1", y[grep(paste0("^",x,"\\|"),y)])}, x=results$H_GB_2_TEMP,
+y=strsplit(results$H_MALLREADS,";"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+
+# split ALLREADS and match to each allele from HipSTR call to get spanning read depth (alignment-based)
+results$H_ALLREADS_1_TEMP <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,"\\|(.*)"), "\\1", y[grep(paste0("^",x,"\\|"),y)])}, x=results$H_GB_1_TEMP,
+y=strsplit(results$H_ALLREADS,";"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+results$H_ALLREADS_2_TEMP <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,"\\|(.*)"), "\\1", y[grep(paste0("^",x,"\\|"),y)])}, x=results$H_GB_2_TEMP,
+y=strsplit(results$H_ALLREADS,";"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+
+# Calculate repeat difference from reference for HipSTR based on sample sex
+if (sex == "M") {
+  
+  results <- results %>%
+    # fill in permanent H_MALLREADS columns
+    # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
+    mutate(H_MALLREADS_1 = 
+             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), 
+                     H_MALLREADS_2_TEMP, H_MALLREADS_1_TEMP),
+           H_MALLREADS_2 =
+             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), 
+                     H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP)) %>%
+    # fill in permanent H_ALLREADS columns
+    # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
+    mutate(H_ALLREADS_1 = 
+             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_2_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP), 
+                     H_ALLREADS_2_TEMP, H_ALLREADS_1_TEMP),
+           H_ALLREADS_2 =
+             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_2_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP), 
+                     H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP)) %>%
+    # fill in permanent H_GB columns
+    # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
+    mutate(H_GB_1 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_2_TEMP, H_GB_1_TEMP),
+           H_GB_2 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_1_TEMP, H_GB_2_TEMP)) %>%
+    # calculate repeat difference
+    # fill in -999 for allele 2 on sex chromosomes to indicate it should not be considered a true call
+    mutate(H_REPDIFF_1 = H_GB_1/period.size,
+           H_REPDIFF_2 = if_else((chr == "chrX" | chr == "chrY"), -999, H_GB_2/period.size))
+  
+} else {
+  
+  # fill in all permanent columns with their corresponding temporary column
+  # since sample is female, chrX has 2 alleles and can be filled as autosomes
+  results <- results %>% 
+    mutate(H_MALLREADS_1 = H_MALLREADS_1_TEMP, H_MALLREADS_2 = H_MALLREADS_2_TEMP,
+           H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
+    mutate(H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
+           H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
+    mutate(H_REPDIFF_1 = H_GB_1/period.size, H_REPDIFF_2 = H_GB_2/period.size)
+
+}
+
+# remove temporary columns
+results <- results %>% select(-c(H_GB_1_TEMP, H_GB_2_TEMP, H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP, H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP))
+
+
+# split ENCLREADS and match to each allele from GangSTR call to get spanning read depth
+results$G_ENCLREADS_1 <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,",(.*)"), "\\1", y[grep(paste0("^",x,","),y)])}, x=results$G_REPCN_1,
+y=strsplit(results$G_ENCLREADS,"\\|"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+results$G_ENCLREADS_2 <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,",(.*)"), "\\1", y[grep(paste0("^",x,","),y)])}, x=results$G_REPCN_2,
+y=strsplit(results$G_ENCLREADS,"\\|"), SIMPLIFY=FALSE, USE.NAMES=FALSE)))
+
+# Calculate VAF
+results <- results %>%
+  # Find total spanning read depth in HipSTR by summing read depths in MALLREADS
+  mutate(H_MALLREADS_SUM = sapply(strsplit(results$H_MALLREADS,";|\\|"), readdepth)) %>%
+  mutate(H_ALLREADS_SUM = sapply(strsplit(results$H_ALLREADS,";|\\|"), readdepth)) %>%
+  # Divide by individual read depth to get VAF
+  mutate(H_MVAF_1 = H_MALLREADS_1/H_MALLREADS_SUM) %>% mutate(H_MVAF_2 = H_MALLREADS_2/H_MALLREADS_SUM) %>%
+  mutate(H_AVAF_1 = H_ALLREADS_1/H_ALLREADS_SUM) %>% mutate(H_AVAF_2 = H_ALLREADS_2/H_ALLREADS_SUM) %>%
+  mutate(E_VAF_1 = E_ADSP_1/B_depth) %>% mutate(E_VAF_2 = E_ADSP_2/B_depth) %>%
+  # Find total spanning read depth in GangSTR by summing read depths in ENCLREADS
+  mutate(G_ENCLREADS_SUM = sapply(strsplit(results$G_ENCLREADS,",|\\|"), readdepth)) %>%
+  # Divide by individual read depth to get VAF
+  mutate(G_VAF_1 = G_ENCLREADS_1/G_ENCLREADS_SUM) %>% mutate(G_VAF_2 = G_ENCLREADS_2/G_ENCLREADS_SUM)
+
+# Save data frame in RDS file with sample name
+saveRDS(results, file=paste0(sampleID,".rds"))
+```
+
+
+### 2. join_str_samples_nextflow.r
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+#usage: Rscript join_str_samples_nextflow.r ${RDS} ${params.outputbasename}
+
+library(dplyr)
+library(tidyr)
+
+args <- commandArgs(trailingOnly = T)
+
+# Initialize results list
+results_list <- list()
+
+# Load each RDS file and join data frame to list
+for (x in head(args,-1)) {
+  results_list[[x]] <- readRDS(x)
+}
+
+results <- as_tibble(do.call(rbind, results_list))
+
+# Save list in RDS file
+saveRDS(results, file = paste0(tail(args, 1),".rds"))
+```
+
+
+
+
+##########################
+
+FILTERING & CONCORDANCE
+
+##########################
+
+# F. GENOTYPE QUALITY FILTERING
+
+## 1. YAML Config
+Filtering and concordance calculations will use a YAML config file containing the filtering thresholds and sample information for Mendelian trio concordance calculations.
+
+filter_config.yaml
+```{bash}
+# quality scores, VAF, and sample fraction are all numbers between 0 and 1
+# read counts are any number
+HipSTR:
+  # all parameters are numbers
+  nonA.min.qual: x
+  nonA.min.total.reads: x
+  nonA.min.allele.reads: x
+  nonA.min.vaf: x
+  nonA.min.mean.total.reads: x
+  nonA.min.mean.qual: x
+  nonA.min.sample.frac: x
+  A.min.qual: x
+  A.min.total.reads: x
+  A.min.allele.reads: x
+  A.min.vaf: x
+  A.min.mean.total.reads: x
+  A.min.mean.qual: x
+  A.min.sample.frac: x
+GangSTR:
+  # all parameters are numbers
+  nonA.min.qual: x
+  nonA.min.total.reads: x
+  nonA.min.allele.reads: x
+  nonA.min.vaf: x
+  nonA.min.mean.total.reads: x
+  nonA.min.mean.qual: x
+  nonA.min.sample.frac: x
+  A.min.qual: x
+  A.min.total.reads: x
+  A.min.allele.reads: x
+  A.min.vaf: x
+  A.min.mean.total.reads: x
+  A.min.mean.qual: x
+  A.min.sample.frac: x
+EH:
+  # all parameters are numbers
+  nonA.min.total.reads: x
+  nonA.min.allele.reads: x
+  nonA.min.vaf: x
+  nonA.min.mean.total.reads: x
+  nonA.min.sample.frac: x
+  A.min.total.reads: x
+  A.min.allele.reads: x
+  A.min.vaf: x
+  A.min.mean.total.reads: x
+  A.min.sample.frac: x
+ensemble:
+  # fill in "HipSTR", "GangSTR", or "EH"
+  nonA.caller.one: x
+  nonA.caller.two: x
+  nonA.caller.three: x
+  A.caller.one: x
+  A.caller.two: x
+  A.caller.three: x
+sample:
+  # trio ID from Nextflow pipeline
+  trio: x
+  # sample IDs from Nextflow pipeline
+  father: x
+  mother: x
+  child: x
+  # fill in "M" or "F"
+  sex.of.child: x
+
+```
+
+## 2. filtering_optimization.r
+Code for using YAML config file is commented out in the optimization script. YAML will be used in the final code, but optimization is more efficient using command line arguments.
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+# usage: filtering_optimization.r [RDS output of join_str_samples_nextflow.r] [condition #] [arguments 3 - 46 (filtering parameters)]
+# RDS is output of join_str_samples_nextflow.r with HipSTR, GangSTR, Expansion Hunter, and bedtools data for all loci and all samples in tibble format
+# The RDS is the final output of the Nextflow pipeline
+# condition number refers to the specific combination of parameters used in that optimization test, for easier tracking of outputs
+# arguments 3 - 46 are the filtering parameters used throughout the script
+
+# usage with YAML: [RDS output of join_str_samples_nextflow.r] [YAML config]
+
+# RDS is output of join_str_samples_nextflow.r with HipSTR, GangSTR, Expansion Hunter, and bedtools data for all loci and all samples in tibble format
+# The RDS is the final output of the Nextflow pipeline
+
+# YAML CODE IS COMMENTED OUT FOR OPTIMIZATION
+# config file is a YAML file with parameter settings for each caller and ensemble calling
+
+library(dplyr)
+library(tidyr)
+#library(configr)
+
+# load command line arguments
+args <- commandArgs(trailingOnly = T)
+
+# Load YAML config file
+#config <- read.config(file = args[2])
+
+# load results data frame from RDS
+results <- readRDS(args[1])
+
+nonA_loci <- results %>%
+  filter(motif.family != "A")
+
+A_loci <- results %>%
+  filter(motif.family == "A")
+
+
+## filtering parameters
+
+# HipSTR
+
+# minimum HipSTR call quality (VCF field Q)
+# nonA.min.qual.hipstr <- config$HipSTR$nonA.min.qual
+# A.min.qual.hipstr <- config$HipSTR$A.min.qual
+nonA.min.qual.hipstr <- args[3]
+A.min.qual.hipstr <- args[25]
+# minimum total number of reads used to make call in HipSTR (sum of read counts in VCF field MALLREADS)
+# nonA.min.total.reads.hipstr <- config$HipSTR$nonA.min.total.reads
+# A.min.total.reads.hipstr <- config$HipSTR$A.min.total.reads
+nonA.min.total.reads.hipstr <- as.numeric(args[4])
+A.min.total.reads.hipstr <- as.numeric(args[26])
+# minimum number of reads supporting the called allele in HipSTR (read count for allele matching genotype call in VCF field MALLREADS)
+# nonA.min.allele.reads.hipstr <- config$HipSTR$nonA.min.allele.reads
+# A.min.allele.reads.hipstr <- config$HipSTR$A.min.allele.reads
+nonA.min.allele.reads.hipstr <- as.numeric(args[5])
+A.min.allele.reads.hipstr <- as.numeric(args[27])
+# minimum variant allele fraction (VAF) for the called allele in HipSTR (MALLREADS for allele / sum of MALLREADS)
+# nonA.min.vaf.hipstr <- config$HipSTR$nonA.min.vaf
+# A.min.vaf.hipstr <- config$HipSTR$A.min.vaf
+nonA.min.vaf.hipstr <- as.numeric(args[6])
+A.min.vaf.hipstr <- as.numeric(args[28])
+# minimum average HipSTR call quality (VCF field Q) across all samples
+# nonA.min.mean.qual.hipstr <- config$HipSTR$nonA.min.mean.qual
+# A.min.mean.qual.hipstr <- config$HipSTR$A.min.mean.qual
+nonA.min.mean.qual.hipstr <- as.numeric(args[14])
+A.min.mean.qual.hipstr <- as.numeric(args[36])
+# minimum average total number of reads used to make call in HipSTR across all samples
+# nonA.min.mean.total.reads.hipstr <- config$HipSTR$nonA.min.mean.total.reads
+# A.min.mean.total.reads.hipstr <- config$HipSTR$A.min.mean.total.reads
+nonA.min.mean.total.reads.hipstr <- as.numeric(args[15])
+A.min.mean.total.reads.hipstr <- as.numeric(args[37])
+# minimum fraction of total samples that have a call that passed all sample-level filters
+# nonA.min.sample.frac.hipstr <- config$HipSTR$nonA.min.sample.frac
+# A.min.sample.frac.hipstr <- config$HipSTR$A.min.sample.frac
+nonA.min.sample.frac.hipstr <- as.numeric(args[19])
+A.min.sample.frac.hipstr <- as.numeric(args[41])
+
+# GangSTR
+
+# minimum GangSTR call quality (VCF field Q)
+# nonA.min.qual.gangstr <- config$GangSTR$nonA.min.qual
+# A.min.qual.gangstr <- config$GangSTR$A.min.qual
+nonA.min.qual.gangstr <- args[7]
+A.min.qual.gangstr <- args[29]
+# minimum total number of spanning reads used to make call in GangSTR (sum of read counts in VCF field ENCLREADS)
+# nonA.min.total.reads.gangstr <- config$GangSTR$nonA.min.total.reads
+# A.min.total.reads.gangstr <- config$GangSTR$A.min.total.reads
+nonA.min.total.reads.gangstr <- as.numeric(args[8])
+A.min.total.reads.gangstr <- as.numeric(args[30])
+# minimum number of reads supporting the called allele in GangSTR (read count for allele matching genotype call in VCF field ENCLREADS)
+# nonA.min.allele.reads.gangstr <- config$GangSTR$nonA.min.allele.reads
+# A.min.allele.reads.gangstr <- config$GangSTR$A.min.allele.reads
+nonA.min.allele.reads.gangstr <- as.numeric(args[9])
+A.min.allele.reads.gangstr <- as.numeric(args[31])
+# minimum variant allele fraction (VAF) for the called allele in GangSTR (ENCLREADS for allele / sum of ENCLREADS)
+# nonA.min.vaf.gangstr <- config$GangSTR$nonA.min.vaf
+# A.min.vaf.gangstr <- config$GangSTR$A.min.vaf
+nonA.min.vaf.gangstr <- as.numeric(args[10])
+A.min.vaf.gangstr <- as.numeric(args[32])
+# minimum average GangSTR call quality (VCF field Q) across all samples
+# nonA.min.mean.qual.gangstr <- config$GangSTR$nonA.min.mean.qual
+# A.min.mean.qual.gangstr <- config$GangSTR$A.min.mean.qual
+nonA.min.mean.qual.gangstr <- as.numeric(args[16])
+A.min.mean.qual.gangstr <- as.numeric(args[38])
+# minimum average total number of reads used to make call in GangSTR across all samples
+# nonA.min.mean.total.reads.gangstr <- config$GangSTR$nonA.min.mean.total.reads
+# A.min.mean.total.reads.gangstr <- config$GangSTR$A.min.mean.total.reads
+nonA.min.mean.total.reads.gangstr <- as.numeric(args[17])
+A.min.mean.total.reads.gangstr <- as.numeric(args[39])
+# minimum fraction of total samples that have a call that passed all sample-level filters
+# nonA.min.sample.frac.gangstr <- config$GangSTR$nonA.min.sample.frac
+# A.min.sample.frac.gangstr <- config$GangSTR$A.min.sample.frac
+nonA.min.sample.frac.gangstr <- as.numeric(args[20])
+A.min.sample.frac.gangstr <- as.numeric(args[42])
+
+# Expansion Hunter
+
+# minimum number of spanning reads counted by bedtools coverage at each locus
+# nonA.min.total.reads.eh <- config$EH$nonA.min.total.reads
+# A.min.total.reads.eh <- config$EH$A.min.total.reads
+nonA.min.total.reads.eh <- as.numeric(args[11])
+A.min.total.reads.eh <- as.numeric(args[33])
+# minimum number of reads supporting the called allele in EH (read count for allele matching genotype call in VCF field ADSP)
+# nonA.min.allele.reads.eh <- config$EH$nonA.min.allele.reads
+# A.min.allele.reads.eh <- config$EH$A.min.allele.reads
+nonA.min.allele.reads.eh <- as.numeric(args[12])
+A.min.allele.reads.eh <- as.numeric(args[34])
+# minimum variant allele fraction (VAF) for the called allele in EH (ADSP for allele / bedtools coverage spanning reads)
+# nonA.min.vaf.eh <- config$EH$nonA.min.vaf
+# A.min.vaf.eh <- config$EH$A.min.vaf
+nonA.min.vaf.eh <- as.numeric(args[13])
+A.min.vaf.eh <- as.numeric(args[35])
+# minimum average number of spanning reads counted by bedtools coverage at each locus across all samples
+# nonA.min.mean.total.reads.eh <- config$EH$nonA.min.mean.total.reads
+# A.min.mean.total.reads.eh <- config$EH$A.min.mean.total.reads
+nonA.min.mean.total.reads.eh <- as.numeric(args[18])
+A.min.mean.total.reads.eh <- as.numeric(args[40])
+# minimum fraction of total samples that have a call that passed all sample-level filters
+# nonA.min.sample.frac.eh <- config$EH$nonA.min.sample.frac
+# A.min.sample.frac.eh <- config$EH$A.min.sample.frac
+nonA.min.sample.frac.eh <- as.numeric(args[21])
+A.min.sample.frac.eh <- as.numeric(args[43])
+
+# ensemble
+
+# 1st preferred caller (HipSTR, GangSTR, or EH)
+# nonA.caller.one <- config$ensemble$nonA.caller.one
+# A.caller.one <- config$ensemble$A.caller.one
+nonA.caller.one <- args[22]
+A.caller.one <- args[44]
+# 2nd preferred caller (HipSTR, GangSTR, or EH)
+# nonA.caller.two <- config$ensemble$nonA.caller.two
+# A.caller.two <- config$ensemble$A.caller.two
+nonA.caller.two <- args[23]
+A.caller.two <- args[45]
+# 3rd preferred caller (HipSTR, GangSTR, or EH)
+# nonA.caller.three <- config$ensemble$nonA.caller.three
+# A.caller.three <- config$ensemble$A.caller.three
+nonA.caller.three <- args[24]
+A.caller.three <- args[46]
+
+
+
+filtering_function <-
+  function(subset_data,
+           min.qual.hipstr, min.total.reads.hipstr, min.allele.reads.hipstr, min.vaf.hipstr,
+           min.mean.qual.hipstr, min.mean.total.reads.hipstr, min.sample.frac.hipstr,
+           min.qual.gangstr, min.total.reads.gangstr, min.allele.reads.gangstr, min.vaf.gangstr,
+           min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
+           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh,
+           min.mean.total.reads.eh, min.sample.frac.eh,
+           caller.one, caller.two, caller.three) {
+
+  ## Sample-level filters
+
+  # add column for each caller
+  # fill with TRUE if sample passes all filters for that caller and chromosome
+  # fill with FALSE if sample fails any filter for that caller
+
+  subset_data <- subset_data %>%
+  # HipSTR
+  mutate(HipSTR_passsample =
+           # if on chrX or chrY and male
+           case_when(sex == "M" & (chr == "chrX" | chr == "chrY") &
+                     # if there is a genotype call
+                     H_GT != "." & !is.na(H_GT) &
+                     # quality
+                     H_Q >= min.qual.hipstr & !is.na(H_Q) &
+                     # total read depth
+                     H_MALLREADS_SUM >= min.total.reads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     # allele 1 read depth
+                     H_MALLREADS_1 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_1) &
+                     # allele 1 VAF
+                     H_VAF_1 >= min.vaf.hipstr & !is.na(H_VAF_1) ~ TRUE,
+
+                     # if on an autosome and male or on any chromosome and female
+                     ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                     # if there is a genotype call
+                     H_GT != "." & !is.na(H_GT) &
+                     # quality
+                     H_Q >= min.qual.hipstr & !is.na(H_Q) &
+                     # total read depth
+                     H_MALLREADS_SUM >= min.total.reads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     # allele 1 read depth
+                     H_MALLREADS_1 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_1) &
+                     # allele 2 read depth
+                     H_MALLREADS_2 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_2) &
+                     # allele 1 VAF
+                     H_VAF_1 >= min.vaf.hipstr & !is.na(H_VAF_1) &
+                     # allele 2 VAF
+                     H_VAF_2 >= min.vaf.hipstr & !is.na(H_VAF_2) ~ TRUE,
+
+                     # if any filter failed
+                     TRUE ~ FALSE)) %>%
+  # GangSTR
+  mutate(GangSTR_passsample =
+           # if on chrX or chr Y and male
+           case_when(sex == "M" & (chr == "chrX" | chr == "chrY") &
+                     # if there is a genotype call
+                     G_GT != "." & !is.na(G_GT) &
+                     # quality
+                     G_Q >= min.qual.gangstr & !is.na(G_Q) &
+                     # total read depth
+                     G_ENCLREADS_SUM >= min.total.reads.gangstr & !is.na(G_ENCLREADS_SUM) &
+                     # allele 1 read depth
+                     G_ENCLREADS_1 >= min.allele.reads.gangstr & !is.na(G_ENCLREADS_1) &
+                     # allele 1 VAF
+                     G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1) ~ TRUE,
+
+                     # if on an autosome and male or on any chromosome and female
+                     ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                     # if there is a genotype call
+                     G_GT != "." & !is.na(G_GT) &
+                     # quality
+                     G_Q >= min.qual.gangstr & !is.na(G_Q) &
+                     # total read depth
+                     G_ENCLREADS_SUM >= min.total.reads.gangstr & !is.na(G_ENCLREADS_SUM) &
+                     # allele 1 read depth
+                     G_ENCLREADS_1 >= min.allele.reads.gangstr & !is.na(G_ENCLREADS_1) &
+                     # allele 2 read depth
+                     G_ENCLREADS_2 >= min.allele.reads.gangstr & !is.na(G_ENCLREADS_2) &
+                     # allele 1 VAF
+                     G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1) &
+                     # allele 2 VAF
+                     G_VAF_2 >= min.vaf.gangstr & !is.na(G_VAF_2)~ TRUE,
+
+                     # if any filter failed
+                     TRUE ~ FALSE)) %>%
+  # Expansion Hunter
+  mutate(EH_passsample =
+           # if on chrX or chrY and male
+           case_when(sex == "M" & (chr == "chrX" | chr == "chrY") &
+                    # if there is a genotype call
+                    E_GT != "." & !is.na(E_GT) &
+                    # alleles supported by spanning reads only
+                    (E_SO == "SPANNING" | E_SO == "SPANNING/SPANNING") & !is.na(E_SO) &
+                    # total read depth (bedtools)
+                    B_depth >= min.total.reads.eh & !is.na(B_depth) &
+                    # allele 1 read depth
+                    E_ADSP_1 >= min.allele.reads.eh & !is.na(E_ADSP_1) &
+                    # allele 1 VAF
+                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) ~ TRUE,
+
+                    # if on an autosome and male or on any chromosome and female
+                    ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                    # if there is a genotype call
+                    E_GT != "./." & !is.na(E_GT) &
+                    # alleles supported by spanning reads only
+                    (E_SO == "SPANNING" | E_SO == "SPANNING/SPANNING") & !is.na(E_SO) &
+                    # total read depth (bedtools)
+                    B_depth >= min.total.reads.eh & !is.na(B_depth) &
+                    # allele 1 read depth
+                    E_ADSP_1 >= min.allele.reads.eh & !is.na(E_ADSP_1) &
+                    # allele 2 read depth
+                    E_ADSP_2 >= min.allele.reads.eh & !is.na(E_ADSP_2) &
+                    # allele 1 VAF
+                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) &
+                    # allele 2 VAF
+                    E_VAF_2 >= min.vaf.eh & !is.na(E_VAF_2) ~ TRUE,
+
+                    # if any filter failed
+                    TRUE ~ FALSE))
+
+  ## Locus-level filters
+
+  # get number of samples from table
+  num_samples = n_distinct(subset_data$sampleID)
+
+  # Calculate and apply locus-level filters
+  depth_qual_avg <- subset_data %>% group_by(name) %>%
+    summarise(# average quality
+              mean_qual_H = mean(H_Q, na.rm = T),
+              mean_qual_G = mean(G_Q, na.rm = T),
+              # average total read depth
+              mean_depth_H = mean(H_MALLREADS_SUM, na.rm = T),
+              mean_depth_G = mean(G_ENCLREADS_SUM, na.rm = T),
+              mean_depth_E = mean(B_depth, na.rm = T),
+              #HipSTR filter
+              locus_means_H = if_else(mean_qual_H >= min.mean.qual.hipstr & mean_depth_H >= min.mean.total.reads.hipstr, T, F),
+              # GangSTR filter
+              locus_means_G = if_else(mean_qual_G >= min.mean.qual.gangstr & mean_depth_G >= min.mean.total.reads.gangstr, T, F),
+              # Expansion Hunter filter
+              locus_means_E = if_else(mean_depth_E >= min.mean.total.reads.eh, T, F))
+
+  # Calculate the fraction of samples in the data frame that passed the sample-level filters for each locus and caller
+  # If the sample passed sample-level filters, the column [HipSTR|GangSTR|EH]_passsample in the results data frame == TRUE
+  # The number of samples passing sample-level filters at each locus is found using summarise(sum([HipSTR|GangSTR|EH]_passsample == TRUE))
+  # Then that number is divided by the total number of samples to get the fraction of samples passing at each locus
+  # If the resulting fraction is > min.sample.frac.[hipstr|gangstr|eh], sample_frac_filter_[H|G|E] == TRUE for that locus
+  # If the resulting fraction is < min.sample.frac.[hipstr|gangstr|eh], sample_frac_filter_[H|G|E] == FALSE for that locus
+  sample_frac_filter <- subset_data %>% select(c(name, sampleID, HipSTR_passsample, GangSTR_passsample, EH_passsample)) %>%
+    group_by(name) %>%
+    # HipSTR
+    summarise(sample_frac_filter_H = if_else(sum(HipSTR_passsample)/num_samples >= min.sample.frac.hipstr, T, F),
+              # GangSTR
+              sample_frac_filter_G = if_else(sum(GangSTR_passsample)/num_samples >= min.sample.frac.gangstr, T, F),
+              # EH
+              sample_frac_filter_E = if_else(sum(EH_passsample)/num_samples >= min.sample.frac.eh, T, F))
+
+
+  # Join to main table
+  subset_data <- left_join(subset_data, sample_frac_filter, by = "name") %>% left_join(., depth_qual_avg, by = "name")
+
+  # Use Boolean logic to decide whether to keep locus
+  subset_data <- subset_data %>%
+    mutate(HipSTR_passlocus = locus_means_H & sample_frac_filter_H,
+          GangSTR_passlocus = locus_means_G & sample_frac_filter_G,
+          EH_passlocus = locus_means_E & sample_frac_filter_E) %>%
+    mutate(caller = if_else(get(paste0(caller.one,"_passlocus")) == T, caller.one,
+                            if_else(get(paste0(caller.two,"_passlocus")) == T, caller.two,
+                                    if_else(get(paste0(caller.three,"_passlocus")) == T, caller.three, "no call"))))
+
+
+  # Extract genotypes for all loci with a passing call
+  subset_data <- subset_data %>%
+    # pick genotype call by preferred program
+    mutate(allele_1 =
+            if_else(caller == caller.one & get(paste0(caller.one,"_passsample")) == T,
+                    get(paste0(substr(caller.one,1,1),"_REPDIFF_1")),
+                if_else(caller == caller.two & get(paste0(caller.two,"_passsample")) == T,
+                        get(paste0(substr(caller.two,1,1),"_REPDIFF_1")),
+                  if_else(caller == caller.three & get(paste0(caller.three,"_passsample")) == T,
+                          get(paste0(substr(caller.three,1,1),"_REPDIFF_1")),
+                              NA_real_)))) %>%
+    mutate(allele_2 =
+            if_else(caller == caller.one & get(paste0(caller.one,"_passsample")) == T,
+                    get(paste0(substr(caller.one,1,1),"_REPDIFF_2")),
+                if_else(caller == caller.two & get(paste0(caller.two,"_passsample")) == T,
+                        get(paste0(substr(caller.two,1,1),"_REPDIFF_2")),
+                  if_else(caller == caller.three & get(paste0(caller.three,"_passsample")) == T,
+                          get(paste0(substr(caller.three,1,1),"_REPDIFF_2")),
+                              NA_real_))))
+  
+  return(subset_data)
+
+} # END OF FILTERING FUNCTION
+
+# Run filtering on non-poly-A loci
+nonA_loci <-
+  filtering_function(nonA_loci,
+           nonA.min.qual.hipstr, nonA.min.total.reads.hipstr, nonA.min.allele.reads.hipstr, nonA.min.vaf.hipstr,
+           nonA.min.mean.qual.hipstr, nonA.min.mean.total.reads.hipstr, nonA.min.sample.frac.hipstr,
+           nonA.min.qual.gangstr, nonA.min.total.reads.gangstr, nonA.min.allele.reads.gangstr, nonA.min.vaf.gangstr,
+           nonA.min.mean.qual.gangstr, nonA.min.mean.total.reads.gangstr, nonA.min.sample.frac.gangstr,
+           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh,
+           nonA.min.mean.total.reads.eh, nonA.min.sample.frac.eh,
+           nonA.caller.one, nonA.caller.two, nonA.caller.three)
+
+# Run filtering on poly-A loci
+A_loci <-
+  filtering_function(A_loci,
+           A.min.qual.hipstr, A.min.total.reads.hipstr, A.min.allele.reads.hipstr, A.min.vaf.hipstr,
+           A.min.mean.qual.hipstr, A.min.mean.total.reads.hipstr, A.min.sample.frac.hipstr,
+           A.min.qual.gangstr, A.min.total.reads.gangstr, A.min.allele.reads.gangstr, A.min.vaf.gangstr,
+           A.min.mean.qual.gangstr, A.min.mean.total.reads.gangstr, A.min.sample.frac.gangstr,
+           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh,
+           A.min.mean.total.reads.eh, A.min.sample.frac.eh,
+           A.caller.one, A.caller.two, A.caller.three)
+
+# Define chromosome sort order
+chrOrder <-c(paste0("chr",1:22),"chrX", "chrY")
+
+# Join non-A and poly-A loci and sort by chromosome and start coordinate
+filtered_results <- rbind(nonA_loci, A_loci) %>%
+  arrange(sampleID, factor(chr, chrOrder), start)
+
+# save genotypes list in RDS
+#saveRDS(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_genotypes.rds"))
+saveRDS(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_",args[2],"_genotypes.rds"))
+
+# save genotypes and metadata in a CSV
+#write.csv(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_genotypes.csv") , row.names = F, quote = F)
+write.csv(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_",args[2],"_genotypes.csv") , row.names = F, quote = F)
+
+```
+
+
+# H. MENDELIAN CONCORDANCE CALCULATION (1 trio)
+
+trio_concordance.r
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+# usage: Rscript trio_concordance.r [genotypes RDS] [config file]
+
+# genotypes RDS is output of output_genotypes.r with genotype data for trios
+# config file is a YAML file with parameter settings for each caller and ensemble calling
+
+# CONCORDANCE LOGIC:
+# If the locus has genotypes for all samples and is concordant, concordance == TRUE
+# If the locus has genotypes for all samples and is discordant, concordance == FALSE
+# If the locus is missing a genotype for any sample, concordance == "missing genotype"
+## Father can be missing genotype for chrX concordance in trios with male child without disrupting concordance calculation
+## Mother can be missing genotype for chrY concordance in trios with male child without disrupting concordance calculation
+# When concordance column is joined back to full list of loci, any locus that did not pass filtering will have concordance == NA
+
+library(dplyr)
+library(tidyr)
+library(configr)
+
+args <- commandArgs(trailingOnly = T)
+
+# Load genotypes list from RDS
+results <- readRDS(args[1])
+
+# Load YAML config file
+config <- read.config(file = args[2])
+
+# filter genotypes for trio of interest
+results <- results %>% filter(trio == config$sample$trio)
+
+
+# save sample name as variable
+father_1 <- paste0("allele_1_",config$sample$father)
+father_2 <- paste0("allele_2_",config$sample$father)
+mother_1 <- paste0("allele_1_",config$sample$mother)
+mother_2 <- paste0("allele_2_",config$sample$mother)
+child_1 <- paste0("allele_1_",config$sample$child)
+child_2 <- paste0("allele_2_",config$sample$child)
+
+
+# Prepare results data frame for concordance calculation
+trio <- results %>%
+  # filter for loci with calls
+  filter(caller %in% c("HipSTR","GangSTR","EH")) %>%
+  # keep call data and some metadata (for joining)
+  select(c(name, chr, sampleID, allele_1, allele_2)) %>%
+  pivot_wider(names_from = sampleID, values_from = c(allele_1, allele_2))
+
+
+# Determine concordance at each locus
+# Concordance logic is dependent on the sex of the child in the trio
+if (config$sample$sex.of.child == "M") {
+
+  # calculate by row
+  trio <- trio %>% rowwise() %>%
+    mutate(concordance =
+           case_when(
+           # if the chromosome is X and call is concordant
+             chr == "chrX" &
+             # if no genotypes are missing
+             !anyNA(c(get(mother_1),get(mother_2),get(child_1))) &
+             # is either maternal allele present in the child?
+             (get(mother_1) == get(child_1) | get(mother_2) == get(child_1)) &
+             # is the first child allele present in the mother?
+             # second allele on X chromosome is always -999 in males
+             get(child_1) %in% c(get(mother_1),get(mother_2)) ~ TRUE,
+             
+           # if the chromosome is Y and call is concordant
+             chr == "chrY" &
+             # if no genotypes are missing
+             !anyNA(c(get(father_1),get(child_1))) &
+             # is the first paternal allele present in the child?
+             get(father_1) == get(child_1) ~ TRUE,
+
+           # if the chromosome is an autosome and call is concordant
+             chr != "chrX" & chr != "chrY" &
+             # if no genotypes are missing
+             !anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) &
+             # is either paternal allele present in the child?
+             (get(father_1) %in% c(get(child_1),get(child_2)) | get(father_2) %in% c(get(child_1),get(child_2))) &
+             # is either maternal allele present in the child?
+             (get(mother_1) %in% c(get(child_1),get(child_2)) | get(mother_2) %in% c(get(child_1),get(child_2))) &
+             # is the first child allele present in at least one parent?
+             get(child_1) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) &
+             # is the second child allele present in at least one parent?
+             get(child_2) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) ~ TRUE,
+
+           # if any genotype is missing
+             anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+
+           # if the call is discordant
+             TRUE ~ FALSE))
+
+} else {
+
+  # calculate by row
+  trio <- trio %>% rowwise() %>%
+    mutate(concordance =
+           case_when(
+           # if the call is concordant
+             # if no genotypes are missing
+             !anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) &
+             # is either paternal allele present in the child?
+             (get(father_1) %in% c(get(child_1),get(child_2)) | get(father_2) %in% c(get(child_1),get(child_2))) &
+             # is either maternal allele present in the child?
+             (get(mother_1) %in% c(get(child_1),get(child_2)) | get(mother_2) %in% c(get(child_1),get(child_2))) &
+             # is the first child allele present in at least one parent?
+             get(child_1) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) &
+             # is the second child allele present in at least one parent?
+             get(child_2) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) ~ TRUE,
+
+           # if any genotype is missing
+             anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+
+           # if the call is discordant,
+             TRUE ~ FALSE))
+}
+
+
+results <- left_join(results, select(trio,c(name,concordance)), by = c("name"))
+
+nonA_results_stats <- results %>% group_by(name, chr, period.size, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family != "A")
+A_results_stats <- results %>% group_by(name, chr, period.size, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family == "A")
+
+# Calculate statistics for concordance and filtering data
+
+# non poly-A loci stats
+nonA_stats <-
+  data.frame(
+    # DELETE condition column when finished with optimization since parameters will not change
+    condition = sub('.*_([0-9]+)_genotypes\\.rds$', "\\1",args[1]),
+    nonA_num_loci_panel = nrow(nonA_results_stats),
+    nonA_num_2bp_loci = length(which(nonA_results_stats$period.size == 2)),
+    nonA_num_3bp_loci = length(which(nonA_results_stats$period.size == 3)),
+    nonA_num_4bp_loci = length(which(nonA_results_stats$period.size == 4)),
+    nonA_num_loci_passing_filters = length(which(nonA_results_stats$caller != "no call")),
+    nonA_num_2bp_loci_passing_filters = length(which(nonA_results_stats$period.size == 2 & nonA_results_stats$caller != "no call")),
+    nonA_num_3bp_loci_passing_filters = length(which(nonA_results_stats$period.size == 3 & nonA_results_stats$caller != "no call")),
+    nonA_num_4bp_loci_passing_filters = length(which(nonA_results_stats$period.size == 4 & nonA_results_stats$caller != "no call")),
+    nonA_num_loci_failing_filters = length(which(nonA_results_stats$caller == "no call")),
+    nonA_num_2bp_loci_failing_filters = length(which(nonA_results_stats$period.size == 2 & nonA_results_stats$caller == "no call")),
+    nonA_num_3bp_loci_failing_filters = length(which(nonA_results_stats$period.size == 3 & nonA_results_stats$caller == "no call")),
+    nonA_num_4bp_loci_failing_filters = length(which(nonA_results_stats$period.size == 4 & nonA_results_stats$caller == "no call")),
+    nonA_num_loci_caller_hipstr = length(which(nonA_results_stats$caller == "HipSTR")),
+    nonA_num_loci_caller_gangstr = length(which(nonA_results_stats$caller == "GangSTR")),
+    nonA_num_loci_caller_eh = length(which(nonA_results_stats$caller == "EH")),
+    nonA_num_loci_fully_genotyped = length(which(nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)),
+    nonA_num_2bp_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                      & nonA_results_stats$period.size == 2)),
+    nonA_num_3bp_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                      & nonA_results_stats$period.size == 3)),
+    nonA_num_4bp_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                      & nonA_results_stats$period.size == 4)),
+    nonA_num_hipstr_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                          & nonA_results_stats$caller == "HipSTR")),
+    nonA_num_gangstr_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                          & nonA_results_stats$caller == "GangSTR")),
+    nonA_num_eh_loci_fully_genotyped = length(which((nonA_results_stats$concordance == TRUE | nonA_results_stats$concordance == FALSE)
+                                                      & nonA_results_stats$caller == "EH")),
+    nonA_num_concordant_loci = length(which(nonA_results_stats$concordance == TRUE)),
+    nonA_num_2bp_concordant_loci = length(which(nonA_results_stats$period.size == 2 & nonA_results_stats$concordance == TRUE)),
+    nonA_num_3bp_concordant_loci = length(which(nonA_results_stats$period.size == 3 & nonA_results_stats$concordance == TRUE)),
+    nonA_num_4bp_concordant_loci = length(which(nonA_results_stats$period.size == 4 & nonA_results_stats$concordance == TRUE)),
+    nonA_num_hipstr_concordant_loci = length(which(nonA_results_stats$caller == "HipSTR" & nonA_results_stats$concordance == TRUE)),
+    nonA_num_gangstr_concordant_loci = length(which(nonA_results_stats$caller == "GangSTR" & nonA_results_stats$concordance == TRUE)),
+    nonA_num_eh_concordant_loci = length(which(nonA_results_stats$caller == "EH" & nonA_results_stats$concordance == TRUE)),
+    nonA_num_discordant_loci = length(which(nonA_results_stats$concordance == FALSE)),
+    nonA_num_2bp_discordant_loci = length(which(nonA_results_stats$period.size == 2 & nonA_results_stats$concordance == FALSE)),
+    nonA_num_3bp_discordant_loci = length(which(nonA_results_stats$period.size == 3 & nonA_results_stats$concordance == FALSE)),
+    nonA_num_4bp_discordant_loci = length(which(nonA_results_stats$period.size == 4 & nonA_results_stats$concordance == FALSE)),
+    nonA_num_hipstr_discordant_loci = length(which(nonA_results_stats$caller == "HipSTR" & nonA_results_stats$concordance == FALSE)),
+    nonA_num_gangstr_discordant_loci = length(which(nonA_results_stats$caller == "GangSTR" & nonA_results_stats$concordance == FALSE)),
+    nonA_num_eh_discordant_loci = length(which(nonA_results_stats$caller == "EH" & nonA_results_stats$concordance == FALSE)),
+    nonA_num_loci_passing_filter_missing_gt = length(which(is.na(nonA_results_stats$concordance) & nonA_results_stats$caller != "no call")),
+    nonA_num_2bp_loci_passing_filter_missing_gt = length(which(nonA_results_stats$period.size == 2 & is.na(nonA_results_stats$concordance) & nonA_results_stats$caller != "no call")),
+    nonA_num_3bp_loci_passing_filter_missing_gt = length(which(nonA_results_stats$period.size == 3 & is.na(nonA_results_stats$concordance) & nonA_results_stats$caller != "no call")),
+    nonA_num_4bp_loci_passing_filter_missing_gt = length(which(nonA_results_stats$period.size == 4 & is.na(nonA_results_stats$concordance & nonA_results_stats$caller != "no call"))),
+    nonA_num_hipstr_loci_passing_filter_missing_gt = length(which(nonA_results_stats$caller == "HipSTR" & is.na(nonA_results_stats$concordance))),
+    nonA_num_gangstr_loci_passing_filter_missing_gt = length(which(nonA_results_stats$caller == "GangSTR" & is.na(nonA_results_stats$concordance))),
+    nonA_num_eh_loci_passing_filter_missing_gt = length(which(nonA_results_stats$caller == "EH" & is.na(nonA_results_stats$concordance)))) %>%
+  
+  mutate(
+    nonA_frac_num_passing_filters_over_nonA_num_loci_panel = nonA_num_loci_passing_filters / nonA_num_loci_panel,
+    nonA_frac_loci_failing_filters_over_nonA_num_loci_panel = nonA_num_loci_failing_filters / nonA_num_loci_panel,
+    nonA_frac_num_fully_genotyped_over_nonA_num_loci_panel = nonA_num_loci_fully_genotyped / nonA_num_loci_panel,
+    nonA_frac_num_fully_genotyped_over_nonA_num_passing_filters = nonA_num_loci_fully_genotyped / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_hipstr_over_nonA_num_passing_filters = nonA_num_loci_caller_hipstr / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_gangstr_over_nonA_num_passing_filters = nonA_num_loci_caller_gangstr / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_eh_over_nonA_num_passing_filters = nonA_num_loci_caller_eh / nonA_num_loci_passing_filters,
+    nonA_frac_loci_passing_filter_missing_gt_over_nonA_num_passing_filters = nonA_num_loci_passing_filter_missing_gt / nonA_num_loci_passing_filters,
+    nonA_frac_2bp_loci_passing_filter_missing_gt_over_nonA_num_2bp_passing_filters = nonA_num_2bp_loci_passing_filter_missing_gt / nonA_num_2bp_loci_passing_filters,
+    nonA_frac_3bp_loci_passing_filter_missing_gt_over_nonA_num_3bp_passing_filters = nonA_num_3bp_loci_passing_filter_missing_gt / nonA_num_3bp_loci_passing_filters,
+    nonA_frac_4bp_loci_passing_filter_missing_gt_over_nonA_num_4bp_passing_filters = nonA_num_4bp_loci_passing_filter_missing_gt / nonA_num_4bp_loci_passing_filters,
+    nonA_frac_discordant_over_nonA_sum_concordant_discordant = nonA_num_discordant_loci / (nonA_num_concordant_loci + nonA_num_discordant_loci),
+    nonA_frac_2bp_discordant_over_nonA_sum_2bp_concordant_discordant = 
+           nonA_num_2bp_discordant_loci / (nonA_num_2bp_concordant_loci + nonA_num_2bp_discordant_loci),
+    nonA_frac_3bp_discordant_over_nonA_sum_3bp_concordant_discordant =
+           nonA_num_3bp_discordant_loci / (nonA_num_3bp_concordant_loci + nonA_num_3bp_discordant_loci),
+    nonA_frac_4bp_discordant_over_nonA_sum_4bp_concordant_discordant =
+           nonA_num_4bp_discordant_loci / (nonA_num_4bp_concordant_loci + nonA_num_4bp_discordant_loci),
+    nonA_frac_hipstr_discordant_over_nonA_sum_hipstr_concordant_discordant =
+           nonA_num_hipstr_discordant_loci / (nonA_num_hipstr_concordant_loci + nonA_num_hipstr_discordant_loci),
+    nonA_frac_gangstr_discordant_over_nonA_sum_gangstr_concordant_discordant =
+           nonA_num_gangstr_discordant_loci / (nonA_num_gangstr_concordant_loci + nonA_num_gangstr_discordant_loci),
+    nonA_frac_eh_discordant_over_nonA_sum_eh_concordant_discordant =
+           nonA_num_eh_discordant_loci / (nonA_num_eh_concordant_loci + nonA_num_eh_discordant_loci))
+  
+
+# poly A loci stats  
+A_stats <-
+  data.frame(
+    # DELETE condition column when finished with optimization since parameters will not change
+    condition = sub('.*_([0-9]+)_genotypes\\.rds$', "\\1",args[1]),
+    A_num_loci_panel = nrow(A_results_stats),
+    A_num_loci_passing_filters = length(which(A_results_stats$caller != "no call")),
+    A_num_loci_failing_filters = length(which(A_results_stats$caller == "no call")),
+    A_num_loci_caller_hipstr = length(which(A_results_stats$caller == "HipSTR" )),
+    A_num_loci_caller_gangstr = length(which(A_results_stats$caller == "GangSTR" )),
+    A_num_loci_caller_eh = length(which(A_results_stats$caller == "EH" )),
+    A_num_loci_fully_genotyped = length(which(A_results_stats$concordance == TRUE | A_results_stats$concordance == FALSE)),
+    A_num_hipstr_loci_fully_genotyped = length(which((A_results_stats$concordance == TRUE | A_results_stats$concordance == FALSE)
+                                                      & A_results_stats$caller == "HipSTR" )),
+    A_num_gangstr_loci_fully_genotyped = length(which((A_results_stats$concordance == TRUE | A_results_stats$concordance == FALSE)
+                                                        & A_results_stats$caller == "GangSTR" )),
+    A_num_eh_loci_fully_genotyped = length(which((A_results_stats$concordance == TRUE | A_results_stats$concordance == FALSE)
+                                                  & A_results_stats$caller == "EH" )),
+    A_num_concordant_loci = length(which(A_results_stats$concordance == TRUE )),
+    A_num_hipstr_concordant_loci = length(which(A_results_stats$caller == "HipSTR" & A_results_stats$concordance == TRUE)),
+    A_num_gangstr_concordant_loci = length(which(A_results_stats$caller == "GangSTR" & A_results_stats$concordance == TRUE)),
+    A_num_eh_concordant_loci = length(which(A_results_stats$caller == "EH" & A_results_stats$concordance == TRUE)),
+    A_num_discordant_loci = length(which(A_results_stats$concordance == FALSE )),
+    A_num_hipstr_discordant_loci = length(which(A_results_stats$caller == "HipSTR" & A_results_stats$concordance == FALSE)),
+    A_num_gangstr_discordant_loci = length(which(A_results_stats$caller == "GangSTR" & A_results_stats$concordance == FALSE)),
+    A_num_eh_discordant_loci = length(which(A_results_stats$caller == "EH" & A_results_stats$concordance == FALSE)),
+    A_num_loci_passing_filter_missing_gt = length(which(is.na(A_results_stats$concordance) & A_results_stats$caller != "no call")),
+    A_num_hipstr_loci_passing_filter_missing_gt = length(which(A_results_stats$caller == "HipSTR" & is.na(A_results_stats$concordance))),
+    A_num_gangstr_loci_passing_filter_missing_gt = length(which(A_results_stats$caller == "GangSTR" & is.na(A_results_stats$concordance))),
+    A_num_eh_loci_passing_filter_missing_gt = length(which(A_results_stats$caller == "EH" & is.na(A_results_stats$concordance)))) %>%
+  
+  mutate(
+    A_frac_num_passing_filters_over_A_num_loci_panel = A_num_loci_passing_filters / A_num_loci_panel,
+    A_frac_loci_failing_filters_over_A_num_loci_panel = A_num_loci_failing_filters / A_num_loci_panel,
+    A_frac_num_fully_genotyped_over_A_num_loci_panel = A_num_loci_fully_genotyped / A_num_loci_panel,
+    A_frac_num_fully_genotyped_over_A_num_passing_filters = A_num_loci_fully_genotyped / A_num_loci_passing_filters,
+    A_frac_num_caller_hipstr_over_A_num_passing_filters = A_num_loci_caller_hipstr / A_num_loci_passing_filters,
+    A_frac_num_caller_gangstr_over_A_num_passing_filters = A_num_loci_caller_gangstr / A_num_loci_passing_filters,
+    A_frac_num_caller_eh_over_A_num_passing_filters = A_num_loci_caller_eh / A_num_loci_passing_filters,
+    A_frac_loci_passing_filter_missing_gt_over_A_num_passing_filters = A_num_loci_passing_filter_missing_gt / A_num_loci_passing_filters,
+    A_frac_discordant_over_A_sum_concordant_discordant = A_num_discordant_loci / (A_num_concordant_loci + A_num_discordant_loci),
+    A_frac_hipstr_discordant_over_A_sum_hipstr_concordant_discordant = 
+           A_num_hipstr_discordant_loci / (A_num_hipstr_concordant_loci + A_num_hipstr_discordant_loci),
+    A_frac_gangstr_discordant_over_A_sum_gangstr_concordant_discordant = 
+           A_num_gangstr_discordant_loci / (A_num_gangstr_concordant_loci + A_num_gangstr_discordant_loci),
+    A_frac_eh_discordant_over_A_sum_eh_concordant_discordant = 
+           A_num_eh_discordant_loci / (A_num_eh_concordant_loci + A_num_eh_discordant_loci))
+
+
+all_loci_stats <- cbind(nonA_stats, A_stats)
+
+print(all_loci_stats)
+
+# save concordance results in RDS
+saveRDS(results, file = paste0(sub('\\.rds$', '', args[1]),"_",config$sample$trio,"_concordance.rds"))
+
+# save concordance statistics in TSV file
+write.table(all_loci_stats, file = paste0(sub('\\.rds$', '', args[1]),"_",config$sample$trio,"_concordance_stats.tsv"), quote = F, row.names = F)
+
+```
+
+
+
+
+
