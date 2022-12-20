@@ -1274,6 +1274,9 @@ HipSTR:
   nonA.min.total.reads: x
   nonA.min.allele.reads: x
   nonA.min.vaf: x
+  nonA.max.stutter.frac: x
+  nonA.max.flankindel.frac: x
+  nonA.min.gldiff: x
   nonA.min.mean.total.reads: x
   nonA.min.mean.qual: x
   nonA.min.sample.frac: x
@@ -1281,6 +1284,9 @@ HipSTR:
   A.min.total.reads: x
   A.min.allele.reads: x
   A.min.vaf: x
+  A.max.stutter.frac: x
+  A.max.flankindel.frac: x
+  A.min.gldiff: x
   A.min.mean.total.reads: x
   A.min.mean.qual: x
   A.min.sample.frac: x
@@ -1305,11 +1311,13 @@ EH:
   nonA.min.total.reads: x
   nonA.min.allele.reads: x
   nonA.min.vaf: x
+  nonA.min.lc: x
   nonA.min.mean.total.reads: x
   nonA.min.sample.frac: x
   A.min.total.reads: x
   A.min.allele.reads: x
   A.min.vaf: x
+  A.min.lc: x
   A.min.mean.total.reads: x
   A.min.sample.frac: x
 ensemble:
@@ -1481,6 +1489,11 @@ A.min.allele.reads.eh <- as.numeric(args[34])
 # A.min.vaf.eh <- config$EH$A.min.vaf
 nonA.min.vaf.eh <- as.numeric(args[13])
 A.min.vaf.eh <- as.numeric(args[35])
+# minimum average locus coverage (LC) in EH
+# nonA.min.lc.eh <- config$EH$nonA.min.lc
+# A.min.lc.eh <- config$EH$A.min.lc
+nonA.min.lc.eh <- as.numeric(args[53])
+A.min.lc.eh <- as.numeric(args[54])
 # minimum average number of spanning reads counted by bedtools coverage at each locus across all samples
 # nonA.min.mean.total.reads.eh <- config$EH$nonA.min.mean.total.reads
 # A.min.mean.total.reads.eh <- config$EH$A.min.mean.total.reads
@@ -1622,7 +1635,9 @@ filtering_function <-
                     # allele 1 read depth
                     E_ADSP_1 >= min.allele.reads.eh & !is.na(E_ADSP_1) &
                     # allele 1 VAF
-                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) ~ TRUE,
+                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) &
+                    # average locus coverage
+                    E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
                     # if on an autosome and male or on any chromosome and female
                     ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
@@ -1639,7 +1654,9 @@ filtering_function <-
                     # allele 1 VAF
                     E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) &
                     # allele 2 VAF
-                    E_VAF_2 >= min.vaf.eh & !is.na(E_VAF_2) ~ TRUE,
+                    E_VAF_2 >= min.vaf.eh & !is.na(E_VAF_2) &
+                    # average locus coverage
+                    E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
                     # if any filter failed
                     TRUE ~ FALSE))
