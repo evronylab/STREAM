@@ -1395,6 +1395,21 @@ A.min.allele.reads.hipstr <- as.numeric(args[27])
 # A.min.vaf.hipstr <- config$HipSTR$A.min.vaf
 nonA.min.vaf.hipstr <- as.numeric(args[6])
 A.min.vaf.hipstr <- as.numeric(args[28])
+# maximum fraction of stutter reads
+# nonA.max.stutter.frac.hipstr <- config$HipSTR$nonA.max.stutter.frac
+# A.max.stutter.frac.hipstr <- config$HipSTR$A.max.stutter.frac
+nonA.max.stutter.frac.hipstr <- as.numeric(args[47])
+A.max.stutter.frac.hipstr <- as.numeric(args[50])
+# maximum fraction of reads with flank indels
+# nonA.max.flankindel.frac.hipstr <- config$HipSTR$nonA.max.flankindel.frac
+# A.max.flankindel.frac.hipstr <- config$HipSTR$A.max.flankindel.frac
+nonA.max.flankindel.frac.hipstr <- as.numeric(args[48])
+A.max.flankindel.frac.hipstr <- as.numeric(args[51])
+# minimum difference in likelihood between call and next-best call (GLDIFF)
+# nonA.min.gldiff.hipstr <- config$HipSTR$nonA.min.gldiff
+# A.min.gldiff.hipstr <- config$HipSTR$A.min.gldiff
+nonA.min.gldiff.hipstr <- as.numeric(args[49])
+A.min.gldiff.hipstr <- as.numeric(args[52])
 # minimum average HipSTR call quality (VCF field Q) across all samples
 # nonA.min.mean.qual.hipstr <- config$HipSTR$nonA.min.mean.qual
 # A.min.mean.qual.hipstr <- config$HipSTR$A.min.mean.qual
@@ -1527,7 +1542,13 @@ filtering_function <-
                      # allele 1 read depth
                      H_MALLREADS_1 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_1) &
                      # allele 1 VAF
-                     H_VAF_1 >= min.vaf.hipstr & !is.na(H_VAF_1) ~ TRUE,
+                     H_MVAF_1 >= min.vaf.hipstr & !is.na(H_MVAF_1) &
+                     # stutter fraction
+                     H_DSTUTTER/H_DP <= nonA.max.stutter.frac.hipstr & !is.na(H_DSTUTTER) &
+                     # flank indel fraction
+                     H_DFLANKINDEL/H_DP <= nonA.max.flankindel.frac.hipstr & !is.na(H_FLANKINDEL) &
+                     # likelihood difference
+                     H_GLDIFF >= nonA.min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
 
                      # if on an autosome and male or on any chromosome and female
                      ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
@@ -1542,9 +1563,15 @@ filtering_function <-
                      # allele 2 read depth
                      H_MALLREADS_2 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_2) &
                      # allele 1 VAF
-                     H_VAF_1 >= min.vaf.hipstr & !is.na(H_VAF_1) &
+                     H_MVAF_1 >= min.vaf.hipstr & !is.na(H_MVAF_1) &
                      # allele 2 VAF
-                     H_VAF_2 >= min.vaf.hipstr & !is.na(H_VAF_2) ~ TRUE,
+                     H_MVAF_2 >= min.vaf.hipstr & !is.na(H_MVAF_2) &
+                     # stutter fraction
+                     H_DSTUTTER/H_DP <= nonA.max.stutter.frac.hipstr & !is.na(H_DSTUTTER) &
+                     # flank indel fraction
+                     H_DFLANKINDEL/H_DP <= nonA.max.flankindel.frac.hipstr & !is.na(H_FLANKINDEL) &
+                     # likelihood difference
+                     H_GLDIFF >= nonA.min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
 
                      # if any filter failed
                      TRUE ~ FALSE)) %>%
