@@ -1135,7 +1135,7 @@ results <-
   # split ADSP field to get spanning read depth for Expansion Hunter alleles
   separate(E_ADSP, c("E_ADSP_1","E_ADSP_2"), sep="/", fill="right", remove=F) %>%
   # convert columns from character to numeric where necessary
-  mutate_at(c("H_Q","H_DP","H_DFLANKINDEL","H_DSTUTTER", "H_GB_1_TEMP", "H_GB_2_TEMP",
+  mutate_at(c("H_Q","H_DP","H_DFLANKINDEL","H_DSTUTTER", "H_GB_1_TEMP", "H_GB_2_TEMP", "H_GLDIFF",
               "E_REPCN_1","E_REPCN_2","E_ADSP_1","E_ADSP_2",
               "G_Q","G_DP","G_REPCN_1","G_REPCN_2"), as.numeric) %>%
   # add columns to get repeat count difference from reference
