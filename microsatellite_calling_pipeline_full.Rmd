@@ -1528,10 +1528,11 @@ A.caller.three <- args[46]
 filtering_function <-
   function(subset_data,
            min.qual.hipstr, min.total.reads.hipstr, min.allele.reads.hipstr, min.vaf.hipstr,
+           max.stutter.frac.hipstr, max.flankindel.frac.hipstr, min.gldiff.hipstr,
            min.mean.qual.hipstr, min.mean.total.reads.hipstr, min.sample.frac.hipstr,
            min.qual.gangstr, min.total.reads.gangstr, min.allele.reads.gangstr, min.vaf.gangstr,
            min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
-           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh,
+           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh, min.lc.eh,
            min.mean.total.reads.eh, min.sample.frac.eh,
            caller.one, caller.two, caller.three) {
 
@@ -1739,10 +1740,11 @@ filtering_function <-
 nonA_loci <-
   filtering_function(nonA_loci,
            nonA.min.qual.hipstr, nonA.min.total.reads.hipstr, nonA.min.allele.reads.hipstr, nonA.min.vaf.hipstr,
+           nonA.max.stutter.frac.hipstr, nonA.max.flankindel.frac.hipstr, nonA.min.gldiff.hipstr,
            nonA.min.mean.qual.hipstr, nonA.min.mean.total.reads.hipstr, nonA.min.sample.frac.hipstr,
            nonA.min.qual.gangstr, nonA.min.total.reads.gangstr, nonA.min.allele.reads.gangstr, nonA.min.vaf.gangstr,
            nonA.min.mean.qual.gangstr, nonA.min.mean.total.reads.gangstr, nonA.min.sample.frac.gangstr,
-           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh,
+           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh, nonA.min.lc.eh,
            nonA.min.mean.total.reads.eh, nonA.min.sample.frac.eh,
            nonA.caller.one, nonA.caller.two, nonA.caller.three)
 
@@ -1750,10 +1752,11 @@ nonA_loci <-
 A_loci <-
   filtering_function(A_loci,
            A.min.qual.hipstr, A.min.total.reads.hipstr, A.min.allele.reads.hipstr, A.min.vaf.hipstr,
+           A.max.stutter.frac.hipstr, A.max.flankindel.frac.hipstr, A.min.gldiff.hipstr,
            A.min.mean.qual.hipstr, A.min.mean.total.reads.hipstr, A.min.sample.frac.hipstr,
            A.min.qual.gangstr, A.min.total.reads.gangstr, A.min.allele.reads.gangstr, A.min.vaf.gangstr,
            A.min.mean.qual.gangstr, A.min.mean.total.reads.gangstr, A.min.sample.frac.gangstr,
-           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh,
+           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh, A.min.lc.eh,
            A.min.mean.total.reads.eh, A.min.sample.frac.eh,
            A.caller.one, A.caller.two, A.caller.three)
 
