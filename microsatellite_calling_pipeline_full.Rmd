@@ -1139,8 +1139,10 @@ results <-
               "E_REPCN_1","E_REPCN_2","E_ADSP_1","E_ADSP_2",
               "G_Q","G_DP","G_REPCN_1","G_REPCN_2"), as.numeric) %>%
   # add columns to get repeat count difference from reference
-  mutate(E_REPDIFF_1 = E_REPCN_1-E_REF) %>% mutate(E_REPDIFF_2 = E_REPCN_2-E_REF) %>%
-  mutate(G_REPDIFF_1 = G_REPCN_1-G_REF) %>% mutate(G_REPDIFF_2 = G_REPCN_2-G_REF)
+  mutate(E_REPDIFF_1 = E_REPCN_1-E_REF, E_REPDIFF_2 = E_REPCN_2-E_REF) %>%
+  mutate(G_REPDIFF_1 = G_REPCN_1-G_REF, G_REPDIFF_2 = G_REPCN_2-G_REF) %>%
+  # add columns to get fraction of reads that have stutter or flank indels
+  mutate(H_STUTTERFRAC = H_DSTUTTER/H_DP, H_FLINDELFRAC = H_DFLANKINDEL/H_DP)
 
 # split MALLREADS and match to each allele from HipSTR call to get spanning read depth (maximum-likelihood-based)
 results$H_MALLREADS_1_TEMP <- unlist(as.numeric(mapply(function(x,y){ sub(paste0("^",x,"\\|(.*)"), "\\1", y[grep(paste0("^",x,"\\|"),y)])}, x=results$H_GB_1_TEMP,
@@ -1271,9 +1273,12 @@ filter_config.yaml
 HipSTR:
   # all parameters are numbers
   nonA.min.qual: x
-  nonA.min.total.reads: x
-  nonA.min.allele.reads: x
-  nonA.min.vaf: x
+  nonA.min.mallreads: x
+  nonA.min.allele.mallreads: x
+  nonA.min.mvaf: x
+  nonA.min.allreads: x
+  nonA.min.allele.allreads: x
+  nonA.min.avaf: x
   nonA.max.stutter.frac: x
   nonA.max.flankindel.frac: x
   nonA.min.gldiff: x
@@ -1281,9 +1286,12 @@ HipSTR:
   nonA.min.mean.qual: x
   nonA.min.sample.frac: x
   A.min.qual: x
-  A.min.total.reads: x
-  A.min.allele.reads: x
-  A.min.vaf: x
+  A.min.mallreads: x
+  A.min.allele.mallreads: x
+  A.min.mvaf: x
+  A.min.allreads: x
+  A.min.allele.allreads: x
+  A.min.avaf: x
   A.max.stutter.frac: x
   A.max.flankindel.frac: x
   A.min.gldiff: x
@@ -1389,20 +1397,35 @@ A_loci <- results %>%
 nonA.min.qual.hipstr <- args[3]
 A.min.qual.hipstr <- args[25]
 # minimum total number of reads used to make call in HipSTR (sum of read counts in VCF field MALLREADS)
-# nonA.min.total.reads.hipstr <- config$HipSTR$nonA.min.total.reads
-# A.min.total.reads.hipstr <- config$HipSTR$A.min.total.reads
-nonA.min.total.reads.hipstr <- as.numeric(args[4])
-A.min.total.reads.hipstr <- as.numeric(args[26])
+# nonA.min.mallreads.hipstr <- config$HipSTR$nonA.min.mallreads
+# A.min.mallreads.hipstr <- config$HipSTR$A.min.mallreads
+nonA.min.mallreads.hipstr <- as.numeric(args[4])
+A.min.mallreads.hipstr <- as.numeric(args[26])
 # minimum number of reads supporting the called allele in HipSTR (read count for allele matching genotype call in VCF field MALLREADS)
-# nonA.min.allele.reads.hipstr <- config$HipSTR$nonA.min.allele.reads
-# A.min.allele.reads.hipstr <- config$HipSTR$A.min.allele.reads
-nonA.min.allele.reads.hipstr <- as.numeric(args[5])
-A.min.allele.reads.hipstr <- as.numeric(args[27])
+# nonA.min.allele.mallreads.hipstr <- config$HipSTR$nonA.min.allele.mallreads
+# A.min.allele.mallreads.hipstr <- config$HipSTR$A.min.allele.mallreads
+nonA.min.allele.mallreads.hipstr <- as.numeric(args[5])
+A.min.allele.mallreads.hipstr <- as.numeric(args[27])
 # minimum variant allele fraction (VAF) for the called allele in HipSTR (MALLREADS for allele / sum of MALLREADS)
-# nonA.min.vaf.hipstr <- config$HipSTR$nonA.min.vaf
-# A.min.vaf.hipstr <- config$HipSTR$A.min.vaf
-nonA.min.vaf.hipstr <- as.numeric(args[6])
-A.min.vaf.hipstr <- as.numeric(args[28])
+# nonA.min.mvaf.hipstr <- config$HipSTR$nonA.min.mvaf
+# A.min.mvaf.hipstr <- config$HipSTR$A.min.mvaf
+nonA.min.mvaf.hipstr <- as.numeric(args[6])
+A.min.mvaf.hipstr <- as.numeric(args[28])
+# minimum total number of reads used to make call in HipSTR (sum of read counts in VCF field ALLREADS)
+# nonA.min.allreads.hipstr <- config$HipSTR$nonA.min.allreads
+# A.min.allreads.hipstr <- config$HipSTR$A.min.allreads
+nonA.min.allreads.hipstr <- as.numeric(args[55])
+A.min.allreads.hipstr <- as.numeric(args[58])
+# minimum number of reads supporting the called allele in HipSTR (read count for allele matching genotype call in VCF field allreads)
+# nonA.min.allele.allreads.hipstr <- config$HipSTR$nonA.min.allele.allreads
+# A.min.allele.allreads.hipstr <- config$HipSTR$A.min.allele.allreads
+nonA.min.allele.allreads.hipstr <- as.numeric(args[56])
+A.min.allele.allreads.hipstr <- as.numeric(args[59])
+# minimum variant allele fraction (VAF) for the called allele in HipSTR (allreads for allele / sum of ALLREADS)
+# nonA.min.avaf.hipstr <- config$HipSTR$nonA.min.avaf
+# A.min.avaf.hipstr <- config$HipSTR$A.min.avaf
+nonA.min.avaf.hipstr <- as.numeric(args[57])
+A.min.avaf.hipstr <- as.numeric(args[60])
 # maximum fraction of stutter reads
 # nonA.max.stutter.frac.hipstr <- config$HipSTR$nonA.max.stutter.frac
 # A.max.stutter.frac.hipstr <- config$HipSTR$A.max.stutter.frac
@@ -1423,11 +1446,16 @@ A.min.gldiff.hipstr <- as.numeric(args[52])
 # A.min.mean.qual.hipstr <- config$HipSTR$A.min.mean.qual
 nonA.min.mean.qual.hipstr <- as.numeric(args[14])
 A.min.mean.qual.hipstr <- as.numeric(args[36])
-# minimum average total number of reads used to make call in HipSTR across all samples
-# nonA.min.mean.total.reads.hipstr <- config$HipSTR$nonA.min.mean.total.reads
-# A.min.mean.total.reads.hipstr <- config$HipSTR$A.min.mean.total.reads
-nonA.min.mean.total.reads.hipstr <- as.numeric(args[15])
-A.min.mean.total.reads.hipstr <- as.numeric(args[37])
+# minimum average total number of reads (MALLREADS) used to make call in HipSTR across all samples
+# nonA.min.mean.mallreads.hipstr <- config$HipSTR$nonA.min.mean.mallreads
+# A.min.mean.mallreads.hipstr <- config$HipSTR$A.min.mean.mallreads
+nonA.min.mean.mallreads.hipstr <- as.numeric(args[15])
+A.min.mean.mallreads.hipstr <- as.numeric(args[37])
+# minimum average total number of reads (ALLREADS) used to make call in HipSTR across all samples
+# nonA.min.mean.allreads.hipstr <- config$HipSTR$nonA.min.mean.allreads
+# A.min.mean.allreads.hipstr <- config$HipSTR$A.min.mean.allreads
+nonA.min.mean.allreads.hipstr <- as.numeric(args[61])
+A.min.mean.allreads.hipstr <- as.numeric(args[62])
 # minimum fraction of total samples that have a call that passed all sample-level filters
 # nonA.min.sample.frac.hipstr <- config$HipSTR$nonA.min.sample.frac
 # A.min.sample.frac.hipstr <- config$HipSTR$A.min.sample.frac
@@ -1527,7 +1555,8 @@ A.caller.three <- args[46]
 
 filtering_function <-
   function(subset_data,
-           min.qual.hipstr, min.total.reads.hipstr, min.allele.reads.hipstr, min.vaf.hipstr,
+           min.qual.hipstr, min.mallreads.hipstr, min.allreads.hipstr,
+           min.allele.mallreads.hipstr, min.allele.allreads.hipstr, min.mvaf.hipstr, min.avaf.hipstr,
            max.stutter.frac.hipstr, max.flankindel.frac.hipstr, min.gldiff.hipstr,
            min.mean.qual.hipstr, min.mean.total.reads.hipstr, min.sample.frac.hipstr,
            min.qual.gangstr, min.total.reads.gangstr, min.allele.reads.gangstr, min.vaf.gangstr,
@@ -1552,17 +1581,20 @@ filtering_function <-
                      # quality
                      H_Q >= min.qual.hipstr & !is.na(H_Q) &
                      # total read depth
-                     H_MALLREADS_SUM >= min.total.reads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     H_MALLREADS_SUM >= min.mallreads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     H_ALLREADS_SUM >= min.allreads.hipstr & !is.na(H_ALLREADS_SUM) &                       
                      # allele 1 read depth
-                     H_MALLREADS_1 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_1) &
+                     H_MALLREADS_1 >= min.allele.mallreads.hipstr & !is.na(H_MALLREADS_1) &
+                     H_ALLREADS_1 >= min.allele.allreads.hipstr & !is.na(H_ALLREADS_1) &                       
                      # allele 1 VAF
-                     H_MVAF_1 >= min.vaf.hipstr & !is.na(H_MVAF_1) &
+                     H_MVAF_1 >= min.mvaf.hipstr & !is.na(H_MVAF_1) &
+                     H_AVAF_1 >= min.avaf.hipstr & !is.na(H_AVAF_1) &                       
                      # stutter fraction
-                     H_DSTUTTER/H_DP <= nonA.max.stutter.frac.hipstr & !is.na(H_DSTUTTER) &
+                     H_STUTTERFRAC <= max.stutter.frac.hipstr & !is.na(H_STUTTERFRAC) &
                      # flank indel fraction
-                     H_DFLANKINDEL/H_DP <= nonA.max.flankindel.frac.hipstr & !is.na(H_FLANKINDEL) &
+                     H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC) &
                      # likelihood difference
-                     H_GLDIFF >= nonA.min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
+                     H_GLDIFF >= min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
 
                      # if on an autosome and male or on any chromosome and female
                      ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
@@ -1571,21 +1603,26 @@ filtering_function <-
                      # quality
                      H_Q >= min.qual.hipstr & !is.na(H_Q) &
                      # total read depth
-                     H_MALLREADS_SUM >= min.total.reads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     H_MALLREADS_SUM >= min.mallreads.hipstr & !is.na(H_MALLREADS_SUM) &
+                     H_ALLREADS_SUM >= min.allreads.hipstr & !is.na(H_ALLREADS_SUM) &                       
                      # allele 1 read depth
-                     H_MALLREADS_1 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_1) &
+                     H_MALLREADS_1 >= min.allele.mallreads.hipstr & !is.na(H_MALLREADS_1) &
+                     H_ALLREADS_1 >= min.allele.allreads.hipstr & !is.na(H_ALLREADS_1) &                       
                      # allele 2 read depth
-                     H_MALLREADS_2 >= min.allele.reads.hipstr & !is.na(H_MALLREADS_2) &
+                     H_MALLREADS_2 >= min.allele.mallreads.hipstr & !is.na(H_MALLREADS_2) &
+                     H_ALLREADS_2 >= min.allele.allreads.hipstr & !is.na(H_ALLREADS_2) &                       
                      # allele 1 VAF
-                     H_MVAF_1 >= min.vaf.hipstr & !is.na(H_MVAF_1) &
+                     H_MVAF_1 >= min.mvaf.hipstr & !is.na(H_MVAF_1) &
+                     H_AVAF_1 >= min.avaf.hipstr & !is.na(H_AVAF_1) &                       
                      # allele 2 VAF
-                     H_MVAF_2 >= min.vaf.hipstr & !is.na(H_MVAF_2) &
+                     H_MVAF_2 >= min.mvaf.hipstr & !is.na(H_MVAF_2) &
+                     H_AVAF_2 >= min.Avaf.hipstr & !is.na(H_AVAF_2) &                       
                      # stutter fraction
-                     H_DSTUTTER/H_DP <= nonA.max.stutter.frac.hipstr & !is.na(H_DSTUTTER) &
+                     H_STUTTERFRAC <= max.stutter.frac.hipstr & !is.na(H_STUTTERFRAC) &
                      # flank indel fraction
-                     H_DFLANKINDEL/H_DP <= nonA.max.flankindel.frac.hipstr & !is.na(H_FLANKINDEL) &
+                     H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC) &
                      # likelihood difference
-                     H_GLDIFF >= nonA.min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
+                     H_GLDIFF >= min.gldiff.hipstr & !is.na(H_GLDIFF) ~ TRUE,
 
                      # if any filter failed
                      TRUE ~ FALSE)) %>%
@@ -1673,11 +1710,14 @@ filtering_function <-
               mean_qual_H = mean(H_Q, na.rm = T),
               mean_qual_G = mean(G_Q, na.rm = T),
               # average total read depth
-              mean_depth_H = mean(H_MALLREADS_SUM, na.rm = T),
+              mean_mdepth_H = mean(H_MALLREADS_SUM, na.rm = T),
+              mean_adepth_H = mean(H_ALLREADS_SUM, na.rm = T),
               mean_depth_G = mean(G_ENCLREADS_SUM, na.rm = T),
               mean_depth_E = mean(B_depth, na.rm = T),
               #HipSTR filter
-              locus_means_H = if_else(mean_qual_H >= min.mean.qual.hipstr & mean_depth_H >= min.mean.total.reads.hipstr, T, F),
+              locus_means_H = if_else(mean_qual_H >= min.mean.qual.hipstr & 
+                                        mean_mdepth_H >= min.mean.mallreads.hipstr &
+                                        mean_adepth_H >= min.mean.allreads.hipstr, T, F),
               # GangSTR filter
               locus_means_G = if_else(mean_qual_G >= min.mean.qual.gangstr & mean_depth_G >= min.mean.total.reads.gangstr, T, F),
               # Expansion Hunter filter
@@ -1739,7 +1779,8 @@ filtering_function <-
 # Run filtering on non-poly-A loci
 nonA_loci <-
   filtering_function(nonA_loci,
-           nonA.min.qual.hipstr, nonA.min.total.reads.hipstr, nonA.min.allele.reads.hipstr, nonA.min.vaf.hipstr,
+           nonA.min.qual.hipstr, nonA.min.mallreads.hipstr, nonA.min.allreads.hipstr,
+           nonA.min.allele.mallreads.hipstr, nonA.min.allele.allreads.hipstr, nonA.min.mvaf.hipstr, nonA.min.avaf.hipstr,
            nonA.max.stutter.frac.hipstr, nonA.max.flankindel.frac.hipstr, nonA.min.gldiff.hipstr,
            nonA.min.mean.qual.hipstr, nonA.min.mean.total.reads.hipstr, nonA.min.sample.frac.hipstr,
            nonA.min.qual.gangstr, nonA.min.total.reads.gangstr, nonA.min.allele.reads.gangstr, nonA.min.vaf.gangstr,
@@ -1751,7 +1792,8 @@ nonA_loci <-
 # Run filtering on poly-A loci
 A_loci <-
   filtering_function(A_loci,
-           A.min.qual.hipstr, A.min.total.reads.hipstr, A.min.allele.reads.hipstr, A.min.vaf.hipstr,
+           A.min.qual.hipstr, A.min.mallreads.hipstr, A.min.allreads.hipstr,
+           A.min.allele.mallreads.hipstr, A.min.allele.allreads.hipstr, A.min.mvaf.hipstr, A.min.avaf.hipstr,
            A.max.stutter.frac.hipstr, A.max.flankindel.frac.hipstr, A.min.gldiff.hipstr,
            A.min.mean.qual.hipstr, A.min.mean.total.reads.hipstr, A.min.sample.frac.hipstr,
            A.min.qual.gangstr, A.min.total.reads.gangstr, A.min.allele.reads.gangstr, A.min.vaf.gangstr,
