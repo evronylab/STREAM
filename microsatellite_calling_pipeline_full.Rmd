@@ -1331,10 +1331,10 @@ EH:
   A.min.mean.total.reads: x
   A.min.sample.frac: x
 ensemble:
-  # fill in "HipSTR", "GangSTR", "EH", or "no caller"
-  # caller.one cannot be filled in with "no caller"
-  # caller.two can only be "no caller" if caller.three is also "no caller"
-  # caller.three can always be "no caller"
+  # fill in "HipSTR", "GangSTR", "EH", or "no_caller"
+  # caller.one cannot be filled in with "no_caller"
+  # caller.two can only be "no_caller" if caller.three is also "no_caller"
+  # caller.three can always be "no_caller"
   nonA.caller.one: x
   nonA.caller.two: x
   nonA.caller.three: x
@@ -1599,6 +1599,8 @@ filtering_function <-
                      # flank indel fraction
                      H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC) &
                      # likelihood difference
+                     # GLDIFF is sometimes not reported for loci with genotypes
+                     # We do not want to throw out those loci                       
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
                      # if on an autosome and male or on any chromosome and female
@@ -1627,6 +1629,8 @@ filtering_function <-
                      # flank indel fraction
                      H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC) &
                      # likelihood difference
+                     # GLDIFF is sometimes not reported for loci with genotypes
+                     # We do not want to throw out those loci
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
                      # if any filter failed
@@ -1752,9 +1756,10 @@ filtering_function <-
     mutate(HipSTR_passlocus = locus_means_H & sample_frac_filter_H,
           GangSTR_passlocus = locus_means_G & sample_frac_filter_G,
           EH_passlocus = locus_means_E & sample_frac_filter_E) %>%
-    mutate(caller = if_else(get(paste0(caller.one,"_passlocus")) == T & caller.one != "no caller", caller.one,
-                            if_else(get(paste0(caller.two,"_passlocus")) == T & caller.two != "no caller", caller.two,
-                                    if_else(get(paste0(caller.three,"_passlocus")) == T & caller.three != "no caller", caller.three, "no call"))))
+    # choose caller based on preference
+    mutate(caller = if_else(get(paste0(caller.one,"_passlocus")) == T, caller.one,
+                            if_else(get(paste0(caller.two,"_passlocus")) == T & caller.two != "no_caller", caller.two,
+                                    if_else(get(paste0(caller.three,"_passlocus")) == T & caller.three != "no_caller", caller.three, "no call"))))
 
 
   # Extract genotypes for all loci with a passing call
