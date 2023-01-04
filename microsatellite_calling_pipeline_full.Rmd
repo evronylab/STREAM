@@ -1576,6 +1576,14 @@ filtering_function <-
   # fill with TRUE if sample passes all filters for that caller and chromosome
   # fill with FALSE if sample fails any filter for that caller
 
+  if((caller.one == "no_caller")) {
+    stop("caller.one cannot be set to 'no_caller'")
+  }
+  
+  if((caller.two == "no_caller" & caller.three != "no_caller")){
+    stop("If caller.two == 'no_caller', caller.three must also be set to 'no_caller'")
+  }
+    
   subset_data <- subset_data %>%
   # HipSTR
   mutate(HipSTR_passsample =
@@ -1730,7 +1738,11 @@ filtering_function <-
               # GangSTR filter
               locus_means_G = if_else(mean_qual_G >= min.mean.qual.gangstr & mean_depth_G >= min.mean.total.reads.gangstr, T, F),
               # Expansion Hunter filter
-              locus_means_E = if_else(mean_depth_E >= min.mean.total.reads.eh, T, F))
+              locus_means_E = if_else(mean_depth_E >= min.mean.total.reads.eh, T, F)) %>%
+    # replace NA values in locus means columns with FALSE
+    mutate(locus_means_H = if_else(is.na(locus_means_H) == T, F, locus_means_H),
+           locus_means_G = if_else(is.na(locus_means_G) == T, F, locus_means_G),
+           locus_means_E = if_else(is.na(locus_means_E) == T, F, locus_means_E))
 
   # Calculate the fraction of samples in the data frame that passed the sample-level filters for each locus and caller
   # If the sample passed sample-level filters, the column [HipSTR|GangSTR|EH]_passsample in the results data frame == TRUE
@@ -1755,32 +1767,48 @@ filtering_function <-
   subset_data <- subset_data %>%
     mutate(HipSTR_passlocus = locus_means_H & sample_frac_filter_H,
           GangSTR_passlocus = locus_means_G & sample_frac_filter_G,
-          EH_passlocus = locus_means_E & sample_frac_filter_E) %>%
-    # choose caller based on preference
-    mutate(caller = if_else(get(paste0(caller.one,"_passlocus")) == T, caller.one,
-                            if_else(get(paste0(caller.two,"_passlocus")) == T & caller.two != "no_caller", caller.two,
-                                    if_else(get(paste0(caller.three,"_passlocus")) == T & caller.three != "no_caller", caller.three, "no call"))))
+          EH_passlocus = locus_means_E & sample_frac_filter_E)
+  
+  # Label caller.one calls, and set remaining to "no call"
+  subset_data <- subset_data %>% mutate(caller = if_else(!!as.name(paste0(caller.one,"_passlocus")) == T,caller.one,"no call"))
+
+  # Label caller.two calls
+  if(caller.two != "no_caller"){
+    subset_data <- subset_data %>% mutate(caller=if_else(caller == "no call" &    !!as.name(paste0(caller.two,"_passlocus")) == T,caller.two,caller))
+  }
+  
+  # Label caller.three calls
+  if(caller.three != "no_caller"){
+    subset_data <- subset_data %>% mutate(caller=if_else(caller == "no call" & !!as.name(paste0(caller.three,"_passlocus")) == T,caller.three,caller))
+  }
 
 
   # Extract genotypes for all loci with a passing call
-  subset_data <- subset_data %>%
-    # pick genotype call by preferred program
-    mutate(allele_1 =
-            if_else(caller == caller.one & get(paste0(caller.one,"_passsample")) == T,
-                    get(paste0(substr(caller.one,1,1),"_REPDIFF_1")),
-                if_else(caller == caller.two & get(paste0(caller.two,"_passsample")) == T,
-                        get(paste0(substr(caller.two,1,1),"_REPDIFF_1")),
-                  if_else(caller == caller.three & get(paste0(caller.three,"_passsample")) == T,
-                          get(paste0(substr(caller.three,1,1),"_REPDIFF_1")),
-                              NA_real_)))) %>%
-    mutate(allele_2 =
-            if_else(caller == caller.one & get(paste0(caller.one,"_passsample")) == T,
-                    get(paste0(substr(caller.one,1,1),"_REPDIFF_2")),
-                if_else(caller == caller.two & get(paste0(caller.two,"_passsample")) == T,
-                        get(paste0(substr(caller.two,1,1),"_REPDIFF_2")),
-                  if_else(caller == caller.three & get(paste0(caller.three,"_passsample")) == T,
-                          get(paste0(substr(caller.three,1,1),"_REPDIFF_2")),
-                              NA_real_))))
+  
+  # Fill in allele_1
+  # Genotypes for caller.one calls, and set remaining to NA
+  subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_1")), NA_real_))
+  # Genotypes for caller.two calls
+  if(caller.two != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_1")), allele_1))
+  }
+  # Genotypes for caller.three calls
+  if(caller.three != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_1")), allele_1))
+  }
+  
+  # Fill in allele_2
+  # Genotypes for caller.one calls, and set remaining to NA
+  subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_2")), NA_real_))
+  # Genotypes for caller.two calls
+  if(caller.two != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_2")), allele_2))
+  }
+  # Genotypes for caller.three calls
+  if(caller.three != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_2")), allele_2))
+  }
+  
   
   return(subset_data)
 
