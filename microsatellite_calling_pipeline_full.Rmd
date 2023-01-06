@@ -1743,6 +1743,7 @@ filtering_function <-
     mutate(locus_means_H = if_else(is.na(locus_means_H) == T, F, locus_means_H),
            locus_means_G = if_else(is.na(locus_means_G) == T, F, locus_means_G),
            locus_means_E = if_else(is.na(locus_means_E) == T, F, locus_means_E))
+  
 
   # Calculate the fraction of samples in the data frame that passed the sample-level filters for each locus and caller
   # If the sample passed sample-level filters, the column [HipSTR|GangSTR|EH]_passsample in the results data frame == TRUE
@@ -2133,6 +2134,624 @@ write.table(all_loci_stats, file = paste0(sub('\\.rds$', '', args[1]),"_",config
 ```
 
 
+# I. SINGLE PARAMETER PLOTTING
+
+## 1. Optimization statistics
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(gghighlight)
+library(readxl)
+library(patchwork)
+
+optimization_stats_r <- read_excel("optimization_stats_r.xlsx") %>% filter(condition <= 274)
+```
+
+
+## 2. HipSTR
+### a. minimum quality
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_qual != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_qual)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.2, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.05, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_qual != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_qual)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.05, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+
+```
+
+### b. minimum mean quality
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_mean_min_qual != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_mean_min_qual)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.2, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.05, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_mean_min_qual != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_mean_min_qual)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.05, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+
+### c. minimum total reads
+#### i. allreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allreads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 13, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allreads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 13, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+#### ii. mallreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mallreads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mallreads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+
+### d. minimum mean total reads
+#### i. allreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mean_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mean_allreads, label = condition)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mean_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mean_allreads, label = condition)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+#### ii. mallreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mean_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mean_mallreads, label = condition)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mean_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mean_mallreads, label = condition)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+
+### e. minimum allele reads
+#### i. allreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allele_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allele_allreads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 11, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allele_allreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allele_allreads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 11, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+#### ii. mallreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allele_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allele_mallreads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 11, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_allele_mallreads != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_allele_mallreads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 11, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+
+```
+
+
+### f. minimum VAF
+#### i. allreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_avaf != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_avaf)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.1, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.04, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_avaf != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_avaf)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.04, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+
+```
+
+#### ii. mallreads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mvaf != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mvaf)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.1, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.04, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_min_mvaf != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_min_mvaf)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.04, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+
+```
+
+
+### g. minimum GLDIFF
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_min_hipstr_gldiff != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_min_hipstr_gldiff)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 15, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 7, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_min_hipstr_gldiff != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_min_hipstr_gldiff)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 7, y = 107000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+### h. max stutter fraction
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_max_hipstr_stutterfrac != 1 | condition == 1) %>%
+  ggplot(aes(x = nonA_max_hipstr_stutterfrac)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.93, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_max_hipstr_stutterfrac != 1 | condition == 1) %>%
+  ggplot(aes(x = nonA_max_hipstr_stutterfrac)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.93, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+### i. max flank indel fraction
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_max_hipstr_flindel_frac != 1 & nonA_max_hipstr_flindel_frac != .01 | condition == 1 ) %>%
+  ggplot(aes(x = nonA_max_hipstr_flindel_frac)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.93, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_max_hipstr_flindel_frac != 1 | condition == 1) %>%
+  ggplot(aes(x = nonA_max_hipstr_flindel_frac)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.93, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+### j. sample fraction
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_hipstr_sample_frac != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_sample_frac)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 2/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.07, y = 0.0019, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_hipstr_sample_frac != 0 | condition == 1) %>%
+  ggplot(aes(x = nonA_hipstr_sample_frac)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 1, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.07, y = 98000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+
+## 3. GangSTR
+
+### a. minimum qual
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_qual != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_qual)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.07, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_qual != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_qual)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.07, y = 135000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+### b. minimum mean quality
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_mean_qual != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_mean_qual)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.05, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_mean_qual != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_mean_qual)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.05, y = 135000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### c. minimum total reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_total_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_total_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_total_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_total_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### d. minimum mean total reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_mean_total_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_mean_total_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_mean_total_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_mean_total_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### e. minimum allele reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_allele_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_allele_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 9, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_allele_reads != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_allele_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 9, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### f. minimum VAF
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_vaf != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_vaf)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.04, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_min_vaf != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_min_vaf)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.04, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+```
+
+### g. sample fraction
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_gangstr_sample_frac != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_sample_frac)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.07, y = 0.017, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_gangstr_sample_frac != 0 | condition == 5) %>%
+  ggplot(aes(x = nonA_gangstr_sample_frac)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 5, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.07, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
+
+
+## 4. Expansion Hunter
+
+### a. minimum total reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_min_total_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_total_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 15, y = 0.0305, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+  
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_min_total_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_total_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 15, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+
+(discordance_plot + loci_plot)
+```
+
+### b. minimum mean total reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_min_mean_total_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_mean_total_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 15, y = 0.033, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_min_mean_total_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_mean_total_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 15, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### c. minimum allele reads
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_min_allele_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_allele_reads)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 12, y = 0.033, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_min_allele_reads != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_allele_reads)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 12, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### d. min vaf
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_min_vaf != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_vaf)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.07, y = 0.0305, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_min_vaf != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_vaf)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.07, y = 135000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### e. min locus coverage
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_min_lc != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_lc)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 8, y = 0.0335, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_min_lc != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_min_lc)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 8, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+```
+
+### f. sample fraction
+```{r}
+discordance_plot <- optimization_stats_r %>% filter(nonA_eh_sample_frac != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_sample_frac)) +
+  geom_point(aes(y = nonA_frac_discordant_over_nonA_sum_concordant_discordant)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  geom_hline(aes(yintercept = 1/10000), color = "red") +
+  annotate(geom = "text", x = 0.25, y = 10/10000, label = "1 in 10,000", size = 3, color = "red") +
+  annotate(geom = "text", x = 0.07, y = 0.0335, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+loci_plot <- optimization_stats_r %>% filter(nonA_eh_sample_frac != 0 | condition == 3) %>%
+  ggplot(aes(x = nonA_eh_sample_frac)) +
+  geom_point(aes(y = nonA_num_loci_fully_genotyped)) +
+  gghighlight(condition != 3, unhighlighted_params = list(color = "red", alpha = 0.4)) +
+  annotate(geom = "text", x = 0.07, y = 150000, label = "no filters", size = 3, color = "red") +
+  ylim(0,NA)
+
+(discordance_plot + loci_plot)
+
+```
 
 
 
