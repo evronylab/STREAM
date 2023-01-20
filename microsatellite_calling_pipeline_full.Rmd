@@ -1522,39 +1522,44 @@ A.min.allele.reads.eh <- as.numeric(args[48])
 # A.min.vaf.eh <- config$EH$A.min.vaf
 nonA.min.vaf.eh <- as.numeric(args[49])
 A.min.vaf.eh <- as.numeric(args[50])
+# maximum variant allele fraction (VAF) for the called allele in EH (ADSP for allele / bedtools coverage spanning reads)
+# nonA.max.vaf.eh <- config$EH$nonA.max.vaf
+# A.max.vaf.eh <- config$EH$A.max.vaf
+nonA.max.vaf.eh <- as.numeric(args[51])
+A.max.vaf.eh <- as.numeric(args[52])
 # minimum average locus coverage (LC) in EH
 # nonA.min.lc.eh <- config$EH$nonA.min.lc
 # A.min.lc.eh <- config$EH$A.min.lc
-nonA.min.lc.eh <- as.numeric(args[51])
-A.min.lc.eh <- as.numeric(args[52])
+nonA.min.lc.eh <- as.numeric(args[53])
+A.min.lc.eh <- as.numeric(args[54])
 # minimum average number of spanning reads counted by bedtools coverage at each locus across all samples
 # nonA.min.mean.total.reads.eh <- config$EH$nonA.min.mean.total.reads
 # A.min.mean.total.reads.eh <- config$EH$A.min.mean.total.reads
-nonA.min.mean.total.reads.eh <- as.numeric(args[53])
-A.min.mean.total.reads.eh <- as.numeric(args[54])
+nonA.min.mean.total.reads.eh <- as.numeric(args[55])
+A.min.mean.total.reads.eh <- as.numeric(args[56])
 # minimum fraction of total samples that have a call that passed all sample-level filters
 # nonA.min.sample.frac.eh <- config$EH$nonA.min.sample.frac
 # A.min.sample.frac.eh <- config$EH$A.min.sample.frac
-nonA.min.sample.frac.eh <- as.numeric(args[55])
-A.min.sample.frac.eh <- as.numeric(args[56])
+nonA.min.sample.frac.eh <- as.numeric(args[57])
+A.min.sample.frac.eh <- as.numeric(args[58])
 
 # ensemble
 
 # 1st preferred caller (HipSTR, GangSTR, or EH)
 # nonA.caller.one <- config$ensemble$nonA.caller.one
 # A.caller.one <- config$ensemble$A.caller.one
-nonA.caller.one <- args[57]
-A.caller.one <- args[58]
+nonA.caller.one <- args[59]
+A.caller.one <- args[60]
 # 2nd preferred caller (HipSTR, GangSTR, or EH)
 # nonA.caller.two <- config$ensemble$nonA.caller.two
 # A.caller.two <- config$ensemble$A.caller.two
-nonA.caller.two <- args[59]
-A.caller.two <- args[60]
+nonA.caller.two <- args[61]
+A.caller.two <- args[62]
 # 3rd preferred caller (HipSTR, GangSTR, or EH)
 # nonA.caller.three <- config$ensemble$nonA.caller.three
 # A.caller.three <- config$ensemble$A.caller.three
-nonA.caller.three <- args[61]
-A.caller.three <- args[62]
+nonA.caller.three <- args[63]
+A.caller.three <- args[64]
 
 
 
@@ -1566,7 +1571,7 @@ filtering_function <-
            min.mean.qual.hipstr, min.mean.mallreads.hipstr, min.mean.allreads.hipstr, min.sample.frac.hipstr,
            min.qual.gangstr, min.total.reads.gangstr, min.allele.reads.gangstr, min.vaf.gangstr,
            min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
-           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh, min.lc.eh,
+           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh, max.vaf.eh, min.lc.eh,
            min.mean.total.reads.eh, min.sample.frac.eh,
            caller.one, caller.two, caller.three) {
 
@@ -1690,7 +1695,7 @@ filtering_function <-
                     # allele 1 read depth
                     E_ADSP_1 >= min.allele.reads.eh & !is.na(E_ADSP_1) &
                     # allele 1 VAF
-                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) &
+                    E_VAF_1 >= min.vaf.eh & E_VAF_1 <= max.vaf.eh & !is.na(E_VAF_1) &
                     # average locus coverage
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
@@ -1707,9 +1712,9 @@ filtering_function <-
                     # allele 2 read depth
                     E_ADSP_2 >= min.allele.reads.eh & !is.na(E_ADSP_2) &
                     # allele 1 VAF
-                    E_VAF_1 >= min.vaf.eh & !is.na(E_VAF_1) &
+                    E_VAF_1 >= min.vaf.eh & E_VAF_1 <= max.vaf.eh & !is.na(E_VAF_1) &
                     # allele 2 VAF
-                    E_VAF_2 >= min.vaf.eh & !is.na(E_VAF_2) &
+                    E_VAF_2 >= min.vaf.eh & E_VAF_2 <= max.vaf.eh & !is.na(E_VAF_2) &
                     # average locus coverage
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
@@ -1824,7 +1829,7 @@ nonA_loci <-
            nonA.min.mean.qual.hipstr, nonA.min.mean.mallreads.hipstr, nonA.min.mean.allreads.hipstr, nonA.min.sample.frac.hipstr,
            nonA.min.qual.gangstr, nonA.min.total.reads.gangstr, nonA.min.allele.reads.gangstr, nonA.min.vaf.gangstr,
            nonA.min.mean.qual.gangstr, nonA.min.mean.total.reads.gangstr, nonA.min.sample.frac.gangstr,
-           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh, nonA.min.lc.eh,
+           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh, nonA.max.vaf.eh, nonA.min.lc.eh,
            nonA.min.mean.total.reads.eh, nonA.min.sample.frac.eh,
            nonA.caller.one, nonA.caller.two, nonA.caller.three)
 
@@ -1838,7 +1843,7 @@ A_loci <-
            A.min.mean.qual.hipstr, A.min.mean.mallreads.hipstr, A.min.mean.allreads.hipstr, A.min.sample.frac.hipstr,
            A.min.qual.gangstr, A.min.total.reads.gangstr, A.min.allele.reads.gangstr, A.min.vaf.gangstr,
            A.min.mean.qual.gangstr, A.min.mean.total.reads.gangstr, A.min.sample.frac.gangstr,
-           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh, A.min.lc.eh,
+           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh, A.max.vaf.eh, A.min.lc.eh,
            A.min.mean.total.reads.eh, A.min.sample.frac.eh,
            A.caller.one, A.caller.two, A.caller.three)
 
