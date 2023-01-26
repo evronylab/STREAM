@@ -2006,7 +2006,7 @@ if (config$sample$sex.of.child == "M") {
              chr == "chrX" & anyNA(c(get(father_1),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
            
            # if the chromosome is an autosome and any allele is missing
-             anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+             chr != "chrX" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant,
              TRUE ~ FALSE))
