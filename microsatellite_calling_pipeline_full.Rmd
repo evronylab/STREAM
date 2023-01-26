@@ -1321,12 +1321,14 @@ EH:
   nonA.min.total.reads: x
   nonA.min.allele.reads: x
   nonA.min.vaf: x
+  nonA.max.vaf: x
   nonA.min.lc: x
   nonA.min.mean.total.reads: x
   nonA.min.sample.frac: x
   A.min.total.reads: x
   A.min.allele.reads: x
   A.min.vaf: x
+  A.max.vaf: x
   A.min.lc: x
   A.min.mean.total.reads: x
   A.min.sample.frac: x
@@ -1956,8 +1958,15 @@ if (config$sample$sex.of.child == "M") {
              # is the second child allele present in at least one parent?
              get(child_2) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) ~ TRUE,
 
-           # if any genotype is missing
-             anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+           
+           # if the chromosome is X and any maternal allele or child allele is missing
+             chr == "chrX" & anyNA(c(get(mother_1),get(mother_2),get(child_1))) ~ NA,
+           
+           # if the chromosome is Y and the paternal or child allele is missing
+             chr == "chrY" & anyNA(c(get(father_1),get(child_1))) ~ NA,
+           
+           # if the chromosome is an autosome and any allele is missing
+             chr != "chrX" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant
              TRUE ~ FALSE))
@@ -1980,7 +1989,10 @@ if (config$sample$sex.of.child == "M") {
              # is the second child allele present in at least one parent?
              get(child_2) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) ~ TRUE,
 
-           # if any genotype is missing
+           # if the chromosome is X and either maternal allele, either child allele, or the paternal allele are missing
+             chr == "chrX" & anyNA(c(get(father_1),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+           
+           # if the chromosome is an autosome and any allele is missing
              anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant,
