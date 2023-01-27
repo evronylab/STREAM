@@ -1189,12 +1189,14 @@ if (sex == "M") {
   
   # fill in all permanent columns with their corresponding temporary column
   # since sample is female, chrX has 2 alleles and can be filled as autosomes
+  # fill in -999 for any chrY calls to indicate it should not be considered a true call
   results <- results %>% 
     mutate(H_MALLREADS_1 = H_MALLREADS_1_TEMP, H_MALLREADS_2 = H_MALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
     mutate(H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
-    mutate(H_REPDIFF_1 = H_GB_1/period.size, H_REPDIFF_2 = H_GB_2/period.size)
+    mutate(H_REPDIFF_1 = if_else(chr == "chrY", -999, H_GB_1/period.size), 
+           H_REPDIFF_2 = if_else(chr == "chrY", -999, H_GB_2/period.size))
 
 }
 
@@ -1619,7 +1621,7 @@ filtering_function <-
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
                      # if on an autosome and male or on any chromosome and female
-                     ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                     ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                      # if there is a genotype call
                      H_GT != "." & !is.na(H_GT) &
                      # quality
@@ -1650,6 +1652,7 @@ filtering_function <-
 
                      # if any filter failed
                      TRUE ~ FALSE)) %>%
+    
   # GangSTR
   mutate(GangSTR_passsample =
            # if on chrX or chr Y and male
@@ -1666,7 +1669,7 @@ filtering_function <-
                      G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1) ~ TRUE,
 
                      # if on an autosome and male or on any chromosome and female
-                     ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                     ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                      # if there is a genotype call
                      G_GT != "." & !is.na(G_GT) &
                      # quality
@@ -1684,6 +1687,7 @@ filtering_function <-
 
                      # if any filter failed
                      TRUE ~ FALSE)) %>%
+    
   # Expansion Hunter
   mutate(EH_passsample =
            # if on chrX or chrY and male
@@ -1702,7 +1706,7 @@ filtering_function <-
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
                     # if on an autosome and male or on any chromosome and female
-                    ((sex == "M" & chr != "chrX" & chr != "chrY") | sex == "F") &
+                    ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                     # if there is a genotype call
                     E_GT != "./." & !is.na(E_GT) &
                     # alleles supported by spanning reads only
