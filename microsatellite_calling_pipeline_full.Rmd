@@ -1620,7 +1620,7 @@ filtering_function <-
                      # We do not want to throw out those loci                       
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
-                     # if on an autosome and male or on any chromosome and female
+                     # if on an autosome and male or on any chromosome other than chrY and female
                      ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                      # if there is a genotype call
                      H_GT != "." & !is.na(H_GT) &
@@ -1668,7 +1668,7 @@ filtering_function <-
                      # allele 1 VAF
                      G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1) ~ TRUE,
 
-                     # if on an autosome and male or on any chromosome and female
+                     # if on an autosome and male or on any chromosome other than chrY and female
                      ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                      # if there is a genotype call
                      G_GT != "." & !is.na(G_GT) &
@@ -1705,7 +1705,7 @@ filtering_function <-
                     # average locus coverage
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
-                    # if on an autosome and male or on any chromosome and female
+                    # if on an autosome and male or on any chromosome other than chrY and female
                     ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
                     # if there is a genotype call
                     E_GT != "./." & !is.na(E_GT) &
