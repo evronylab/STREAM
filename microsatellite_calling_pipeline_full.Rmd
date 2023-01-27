@@ -1966,7 +1966,7 @@ if (config$sample$sex.of.child == "M") {
              chr == "chrY" & anyNA(c(get(father_1),get(child_1))) ~ NA,
            
            # if the chromosome is an autosome and any allele is missing
-             chr != "chrX" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+             chr != "chrX" & chr != "chrY" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant
              TRUE ~ FALSE))
@@ -1991,6 +1991,7 @@ if (config$sample$sex.of.child == "M") {
              get(child_2) %in% c(get(father_1),get(mother_1),get(mother_2)) ~ TRUE,
              
            # if the chromosome is an autosome and the call is concordant
+             chr != "chrX" & chr != "chrY" &
              # if no genotypes are missing
              !anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) &
              # is either paternal allele present in the child?
@@ -2001,12 +2002,15 @@ if (config$sample$sex.of.child == "M") {
              get(child_1) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) &
              # is the second child allele present in at least one parent?
              get(child_2) %in% c(get(father_1),get(father_2),get(mother_1),get(mother_2)) ~ TRUE,
+           
+           # if the chromosome is Y, disregard call because chrY concordance isn't possible with a female child
+             chr == "chrY" ~ NA,
 
            # if the chromosome is X and either maternal allele, either child allele, or the paternal allele are missing
              chr == "chrX" & anyNA(c(get(father_1),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
            
            # if the chromosome is an autosome and any allele is missing
-             chr != "chrX" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
+             chr != "chrX" & chr != "chrY" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant,
              TRUE ~ FALSE))
