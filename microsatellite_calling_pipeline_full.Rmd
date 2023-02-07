@@ -2846,4 +2846,85 @@ loci_plot <- optimization_stats_r %>% filter(nonA_eh_sample_frac != 0 | conditio
 ```
 
 
+# J. STUTTER PLOTS
+
+```{r}
+# no filter, HipSTR only condition
+condition_1_UDP_1100 <- readRDS("coriell_udp_1_genotypes_UDP-1100_concordance.rds")
+condition_1_UDP_2100 <- readRDS("coriell_udp_1_genotypes_UDP-2100_concordance.rds")
+condition_1_coriell_1 <- readRDS("coriell_udp_1_genotypes_1_concordance.rds")
+condition_1_coriell_2 <- readRDS("coriell_udp_1_genotypes_2_concordance.rds")
+condition_1_coriell_3 <- readRDS("coriell_udp_1_genotypes_3_concordance.rds")
+
+# combine all trios
+condition_1_all <- rbind(condition_1_UDP_1100,condition_1_UDP_2100,condition_1_coriell_1,condition_1_coriell_2,condition_1_coriell_3)
+
+rm(condition_1_UDP_1100,condition_1_UDP_2100,condition_1_coriell_1,condition_1_coriell_2,condition_1_coriell_3)
+gc()
+
+
+# make function for easy repeat plots
+stutter_plot_func <- function(filtered_data, plot_title) {
+  
+  # load pre-filtered data frame (keeping only samples/loci of interest)
+  plotting_data <- filtered_data %>%
+    select(name, chr, motif.family, sampleID, H_GB_1, H_MALLREADS) %>%
+    # split MALLREADS field so just one "bp difference|read count" unit in each column
+    # automatically detects number of columns needed
+    separate_wider_delim(cols = H_MALLREADS, delim = ";", names_sep = "_", too_few = "align_start") %>%
+    # melt data frame so "bp difference|read count" units are in one column
+    pivot_longer(cols = starts_with("H_MALLREADS"), names_to = NULL, 
+                 values_to = "MALLREADS", values_drop_na = TRUE) %>%
+    # separate into bp difference and read count columns
+    separate_wider_delim(cols = "MALLREADS", delim = "|", names = c("bp_diff","read_count"), too_few = "align_start") %>%
+    # convert bp difference and read count columns to numeric
+    mutate(across(c(bp_diff, read_count), as.numeric)) %>%
+    # subtract the genotype call bp difference from the MALLREADS bp difference
+    # bp difference column now represents bp difference from genotype call
+    mutate(bp_diff_from_call = bp_diff - H_GB_1) %>%
+    # divide by motif length to get number of units different from genotype call
+    mutate(unit_diff = bp_diff_from_call / nchar(motif.family))
+    
+  # total number of reads in MALLREADS field
+  all_reads <- plotting_data %>% filter(!is.na(read_count)) %>% summarise(sum(read_count))
+  # fraction of reads that do not match genotype call
+  no_match <- plotting_data %>% filter(unit_diff != 0, !is.na(read_count)) %>% summarise(sum(read_count))
+  # fraction of reads that have more units than the genotype call
+  greater_than <- plotting_data %>% filter(unit_diff > 0, !is.na(read_count)) %>% summarise(sum(read_count))
+  # fraction of reads that have fewer units than the genotype call
+  less_than <- plotting_data %>% filter(unit_diff < 0, !is.na(read_count)) %>% summarise(sum(read_count))
+  # fraction of reads that have n+1 units than the genotype call
+  plus_one <- plotting_data %>% filter(unit_diff == 1, !is.na(read_count)) %>% summarise(sum(read_count))
+  # fraction of reads that have n-1 units than the genotype call
+  minus_one <- plotting_data %>% filter(unit_diff == -1, !is.na(read_count)) %>% summarise(sum(read_count))
+  
+  ggplot(plotting_data) +
+    # make bar plot with sum of read counts at each unit difference
+    geom_col(aes(x = unit_diff, y = read_count), width = 1) +
+    theme_bw() +
+    xlab("units different from genotype call") +
+    ylab("read count") +
+    labs(title = plot_title,
+         # add stats to caption of plot
+         caption = paste0("% not matching genotype: ", round(no_match/all_reads*100, digits = 2),
+                         "\n% less than genotype: ", round(less_than/all_reads*100, digits = 2),
+                         "\n% greater than genotype: ", round(greater_than/all_reads*100, digits = 2),
+                         "\n% n-1: ", round(minus_one/all_reads*100, digits = 2),
+                         "\n% n+1: ", round(plus_one/all_reads*100, digits = 2)))
+}
+
+
+
+condition_1_nonA <- condition_1_all %>% filter(sex == "M", chr == "chrX", motif.family != "A", H_GT != ".")
+condition_1_2bp <- condition_1_all %>% filter(sex == "M", chr == "chrX", nchar(motif.family) == 2, H_GT != ".")
+condition_1_3bp <- condition_1_all %>% filter(sex == "M", chr == "chrX", nchar(motif.family) == 3, H_GT != ".")
+condition_1_4bp <- condition_1_all %>% filter(sex == "M", chr == "chrX", nchar(motif.family) == 4, H_GT != ".")
+condition_1_A <- condition_1_all %>% filter(sex == "M", chr == "chrX", motif.family == "A", H_GT != ".")
+
+stutter_plot_func(condition_1_nonA, "all nonA, male, chrX")
+stutter_plot_func(condition_1_2bp, "2bp motifs, male, chrX")
+stutter_plot_func(condition_1_3bp, "3bp motifs, male, chrX")
+stutter_plot_func(condition_1_4bp, "4bp motifs, male, chrX")
+stutter_plot_func(condition_1_A, "polyA, male, chrX")
+```
 
