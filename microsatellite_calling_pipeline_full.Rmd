@@ -462,15 +462,15 @@ process REMOVE_UMIS {
     
     output:
       // fastq files without UMI in read name
-      tuple val( sampleID ), path( "${read1.simpleName}_noUMI.fastq.gz" ), path( "${read2.simpleName}_noUMI.fastq.gz" )
+      tuple val( sampleID ), path( "noUMI_${read1.name}" ), path( "noUMI_${read2.name}" )
       
     shell:
     '''
     zcat !{read1} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
-    gzip -c > $(basename !{read1} .fastq.gz)_noUMI.fastq.gz
+    gzip -c > noUMI_$(basename !{read1})
     
     zcat !{read2} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
-    gzip -c > $(basename !{read2} .fastq.gz)_noUMI.fastq.gz
+    gzip -c > noUMI_$(basename !{read2})
 
     '''
 }
