@@ -389,8 +389,7 @@ Channel
 workflow {
 
   FASTQC( samples_ch )
-  REMOVE_UMIS( samples_ch )
-  ALIGN_CRAM( REMOVE_UMIS.out )
+  ALIGN_CRAM( samples_ch )
   PICARD( ALIGN_CRAM.out.cram )
   SPLIT_REGIONS()
   HIPSTR( ALIGN_CRAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), ALIGN_CRAM.out.index.collect() )
@@ -447,35 +446,6 @@ process FASTQC {
 }
 
 
-// Remove UMI sequence from read name if present
-// UMI in read name is not compatible with Picard MarkDuplicates
-
-process REMOVE_UMIS {
-
-    time '4h'
-    memory '16GB'
-    cpus 4
-    
-    input:
-      // load FASTQ files
-      tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
-    
-    output:
-      // fastq files without UMI in read name
-      tuple val( sampleID ), path( "noUMI_${read1.name}" ), path( "noUMI_${read2.name}" )
-      
-    shell:
-    '''
-    zcat !{read1} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
-    gzip -c > noUMI_$(basename !{read1})
-    
-    zcat !{read2} | awk '{if (NR % 4 == 1) {split($1,a,":"); print a[1]":"a[2]":"a[3]":"a[4]":"a[5]":"a[6]":"a[7]" "$2} else {print $0}}' | 
-    gzip -c > noUMI_$(basename !{read2})
-
-    '''
-}
-
-
 // Make, sort, and index CRAM with PCR duplicates removed
 
 process ALIGN_CRAM {
@@ -488,7 +458,7 @@ process ALIGN_CRAM {
 
   input:
     // load FASTQ files
-    tuple val( sampleID ), path( read1 ), path( read2 )
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
 
   output:
     // output channel for most processes
@@ -520,7 +490,8 @@ process ALIGN_CRAM {
     OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500 \\
     ASSUME_SORT_ORDER=queryname \\
     CLEAR_DT=false \\
-    REMOVE_SEQUENCING_DUPLICATES=true
+    REMOVE_SEQUENCING_DUPLICATES=true \\
+    READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]:\\([0-9]+\\):\\([0-9]+\\):\\([0-9]+\\).*
     
   # Unmark duplicate reads
   gatk UnmarkDuplicates \
@@ -545,7 +516,7 @@ process PICARD {
 
   time '2h'
 
-  memory '4 GB'
+  memory '8 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
@@ -604,6 +575,7 @@ process SPLIT_REGIONS {
 process HIPSTR {
 
   time '2h'
+  memory '32 GB'
 
   input:
     // load CRAMs
