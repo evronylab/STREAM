@@ -1843,6 +1843,90 @@ write.csv(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_",args[2
 ```
 
 
+## 3. genotype_qc.r (for non-Mendelian data)
+
+The same statistics will be output by trio_concordance.r, so this step can be skipped if you plan on running Mendelian trio analysis
+
+```{r}
+#!/share/apps/r/4.2.0/gcc/bin/Rscript
+
+# usage: Rscript genotype_qc.r [filtered genotypes RDS]
+
+# Outputs TSV with genotype quality data without accounting for Mendelian relationships
+# genotypes RDS is output of output_genotypes.r with filtered genotype data
+
+library(dplyr)
+library(tidyr)
+
+args <- commandArgs(trailingOnly = T)
+
+# Load genotypes list from RDS
+results <- readRDS(args[1])
+
+nonA_results_stats <- results %>% group_by(name, chr, motif.family, caller) %>% summarise() %>% filter(motif.family != "A")
+A_results_stats <- results %>% group_by(name, chr, motif.family, caller) %>% summarise() %>% filter(motif.family == "A")
+
+# Calculate statistics for concordance and filtering data
+
+# non poly-A loci stats
+nonA_stats <-
+  data.frame(
+    nonA_num_loci_panel = nrow(nonA_results_stats),
+    nonA_num_2bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 2)),
+    nonA_num_3bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 3)),
+    nonA_num_4bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 4)),
+    nonA_num_loci_passing_filters = length(which(nonA_results_stats$caller != "no call")),
+    nonA_num_2bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller != "no call")),
+    nonA_num_3bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller != "no call")),
+    nonA_num_4bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller != "no call")),
+    nonA_num_loci_failing_filters = length(which(nonA_results_stats$caller == "no call")),
+    nonA_num_2bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller == "no call")),
+    nonA_num_3bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller == "no call")),
+    nonA_num_4bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller == "no call")),
+    nonA_num_loci_caller_hipstr = length(which(nonA_results_stats$caller == "HipSTR")),
+    nonA_num_loci_caller_gangstr = length(which(nonA_results_stats$caller == "GangSTR")),
+    nonA_num_loci_caller_eh = length(which(nonA_results_stats$caller == "EH"))) %>%
+  
+  mutate(
+    nonA_frac_num_passing_filters_over_nonA_num_loci_panel = nonA_num_loci_passing_filters / nonA_num_loci_panel,
+    nonA_frac_loci_failing_filters_over_nonA_num_loci_panel = nonA_num_loci_failing_filters / nonA_num_loci_panel,
+    nonA_frac_num_fully_genotyped_over_nonA_num_loci_panel = nonA_num_loci_fully_genotyped / nonA_num_loci_panel,
+    nonA_frac_num_fully_genotyped_over_nonA_num_passing_filters = nonA_num_loci_fully_genotyped / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_hipstr_over_nonA_num_passing_filters = nonA_num_loci_caller_hipstr / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_gangstr_over_nonA_num_passing_filters = nonA_num_loci_caller_gangstr / nonA_num_loci_passing_filters,
+    nonA_frac_num_caller_eh_over_nonA_num_passing_filters = nonA_num_loci_caller_eh / nonA_num_loci_passing_filters)
+  
+
+# poly A loci stats  
+A_stats <-
+  data.frame(
+    A_num_loci_panel = nrow(A_results_stats),
+    A_num_loci_passing_filters = length(which(A_results_stats$caller != "no call")),
+    A_num_loci_failing_filters = length(which(A_results_stats$caller == "no call")),
+    A_num_loci_caller_hipstr = length(which(A_results_stats$caller == "HipSTR" )),
+    A_num_loci_caller_gangstr = length(which(A_results_stats$caller == "GangSTR" )),
+    A_num_loci_caller_eh = length(which(A_results_stats$caller == "EH" ))) %>%
+  
+  mutate(
+    A_frac_num_passing_filters_over_A_num_loci_panel = A_num_loci_passing_filters / A_num_loci_panel,
+    A_frac_loci_failing_filters_over_A_num_loci_panel = A_num_loci_failing_filters / A_num_loci_panel,
+    A_frac_num_fully_genotyped_over_A_num_loci_panel = A_num_loci_fully_genotyped / A_num_loci_panel,
+    A_frac_num_fully_genotyped_over_A_num_passing_filters = A_num_loci_fully_genotyped / A_num_loci_passing_filters,
+    A_frac_num_caller_hipstr_over_A_num_passing_filters = A_num_loci_caller_hipstr / A_num_loci_passing_filters,
+    A_frac_num_caller_gangstr_over_A_num_passing_filters = A_num_loci_caller_gangstr / A_num_loci_passing_filters,
+    A_frac_num_caller_eh_over_A_num_passing_filters = A_num_loci_caller_eh / A_num_loci_passing_filters)
+
+
+all_loci_stats <- cbind(nonA_stats, A_stats)
+
+print(all_loci_stats)
+
+# save genotyping QC statistics in TSV file
+write.table(all_loci_stats, file = paste0(sub('\\.rds$', '', args[1]),"_genotype_qc_stats.tsv"), quote = F, row.names = F)
+
+```
+
+
 # H. MENDELIAN CONCORDANCE CALCULATION (1 trio)
 
 ## 1. trio_concordance.r
