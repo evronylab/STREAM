@@ -1890,8 +1890,6 @@ nonA_stats <-
   mutate(
     nonA_frac_num_passing_filters_over_nonA_num_loci_panel = nonA_num_loci_passing_filters / nonA_num_loci_panel,
     nonA_frac_loci_failing_filters_over_nonA_num_loci_panel = nonA_num_loci_failing_filters / nonA_num_loci_panel,
-    nonA_frac_num_fully_genotyped_over_nonA_num_loci_panel = nonA_num_loci_fully_genotyped / nonA_num_loci_panel,
-    nonA_frac_num_fully_genotyped_over_nonA_num_passing_filters = nonA_num_loci_fully_genotyped / nonA_num_loci_passing_filters,
     nonA_frac_num_caller_hipstr_over_nonA_num_passing_filters = nonA_num_loci_caller_hipstr / nonA_num_loci_passing_filters,
     nonA_frac_num_caller_gangstr_over_nonA_num_passing_filters = nonA_num_loci_caller_gangstr / nonA_num_loci_passing_filters,
     nonA_frac_num_caller_eh_over_nonA_num_passing_filters = nonA_num_loci_caller_eh / nonA_num_loci_passing_filters)
@@ -1910,8 +1908,6 @@ A_stats <-
   mutate(
     A_frac_num_passing_filters_over_A_num_loci_panel = A_num_loci_passing_filters / A_num_loci_panel,
     A_frac_loci_failing_filters_over_A_num_loci_panel = A_num_loci_failing_filters / A_num_loci_panel,
-    A_frac_num_fully_genotyped_over_A_num_loci_panel = A_num_loci_fully_genotyped / A_num_loci_panel,
-    A_frac_num_fully_genotyped_over_A_num_passing_filters = A_num_loci_fully_genotyped / A_num_loci_passing_filters,
     A_frac_num_caller_hipstr_over_A_num_passing_filters = A_num_loci_caller_hipstr / A_num_loci_passing_filters,
     A_frac_num_caller_gangstr_over_A_num_passing_filters = A_num_loci_caller_gangstr / A_num_loci_passing_filters,
     A_frac_num_caller_eh_over_A_num_passing_filters = A_num_loci_caller_eh / A_num_loci_passing_filters)
