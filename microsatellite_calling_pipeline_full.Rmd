@@ -334,7 +334,7 @@ params.outputbasename = 'coriell_udp'
 params.script_path = '/scratch/cal8150/uSatAnalysis/templates'
 
 // Temporary directory for SortSam
-params.sortsam_tmp = '/your/path/here'
+params.sortsam_tmp = '/state/partition1/cal8150/gatk-tmp'
 
 
 /*
@@ -505,8 +505,8 @@ process ALIGN_CRAM {
   java -jar ${params.picard} SortSam \\
     I=${sampleID}.unmarked.bam \\
     O=${sampleID}.unmarked.sorted.bam \\
-    SORT_ORDER=coordinate; samtools index ${sampleID}.unmarked.sorted.bam \\
-    TMP_DIR=${params.sortsam_tmp}
+    SORT_ORDER=coordinate \\
+    TMP_DIR=${params.sortsam_tmp}; samtools index ${sampleID}.unmarked.sorted.bam
   
   # Convert to CRAM
   samtools view -F 2304 -C -T ${params.reference} --write-index -O cram -@4 -o ${sampleID}.cram##idx##${sampleID}.cram.crai ${sampleID}.unmarked.sorted.bam
