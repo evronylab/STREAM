@@ -333,6 +333,9 @@ params.outputbasename = 'coriell_udp'
 // Template directory
 params.script_path = '/scratch/cal8150/uSatAnalysis/templates'
 
+// Temporary directory for SortSam
+params.sortsam_tmp = '/your/path/here'
+
 
 /*
 PROGRAMS AND MODULES
@@ -450,9 +453,9 @@ process FASTQC {
 
 process ALIGN_CRAM {
 
-  time '10h'
-  cpus 12
-  memory '32 GB'
+  time '30h'
+  cpus 20
+  memory '48 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
@@ -478,8 +481,8 @@ process ALIGN_CRAM {
   
 
   # Align to reference genome
-  # bwa mem -R [read group] -t 8 [reference fasta] [read 1 fastq] [read 2 fastq]
-  bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t 8 ${params.reference} ${read1} ${read2} > ${sampleID}.bam
+  # bwa mem -R [read group] -t 16 [reference fasta] [read 1 fastq] [read 2 fastq]
+  bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t 16 ${params.reference} ${read1} ${read2} > ${sampleID}.bam
   
   # Remove optical duplicates
   java -jar ${params.picard} MarkDuplicates \\
@@ -502,7 +505,8 @@ process ALIGN_CRAM {
   java -jar ${params.picard} SortSam \\
     I=${sampleID}.unmarked.bam \\
     O=${sampleID}.unmarked.sorted.bam \\
-    SORT_ORDER=coordinate; samtools index ${sampleID}.unmarked.sorted.bam
+    SORT_ORDER=coordinate; samtools index ${sampleID}.unmarked.sorted.bam \\
+    TMP_DIR=${params.sortsam_tmp}
   
   # Convert to CRAM
   samtools view -F 2304 -C -T ${params.reference} --write-index -O cram -@4 -o ${sampleID}.cram##idx##${sampleID}.cram.crai ${sampleID}.unmarked.sorted.bam
