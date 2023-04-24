@@ -1867,63 +1867,86 @@ args <- commandArgs(trailingOnly = T)
 # Load genotypes list from RDS
 results <- readRDS(args[1])
 
-nonA_results_stats <- results %>% group_by(name, chr, motif.family, caller) %>% summarise() %>% filter(motif.family != "A")
-A_results_stats <- results %>% group_by(name, chr, motif.family, caller) %>% summarise() %>% filter(motif.family == "A")
+statslist <- list()
 
 # Calculate statistics for concordance and filtering data
 
+for (i in unique(results$sampleID)) {
 # non poly-A loci stats
-nonA_stats <-
-  data.frame(
-    nonA_num_loci_panel = nrow(nonA_results_stats),
-    nonA_num_2bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 2)),
-    nonA_num_3bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 3)),
-    nonA_num_4bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 4)),
-    nonA_num_loci_passing_filters = length(which(nonA_results_stats$caller != "no call")),
-    nonA_num_2bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller != "no call")),
-    nonA_num_3bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller != "no call")),
-    nonA_num_4bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller != "no call")),
-    nonA_num_loci_failing_filters = length(which(nonA_results_stats$caller == "no call")),
-    nonA_num_2bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller == "no call")),
-    nonA_num_3bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller == "no call")),
-    nonA_num_4bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller == "no call")),
-    nonA_num_loci_caller_hipstr = length(which(nonA_results_stats$caller == "HipSTR")),
-    nonA_num_loci_caller_gangstr = length(which(nonA_results_stats$caller == "GangSTR")),
-    nonA_num_loci_caller_eh = length(which(nonA_results_stats$caller == "EH"))) %>%
+
+  nonA_results_stats <- results %>% filter(sampleID == i, motif.family != "A")
+  A_results_stats <- results %>% filter(sampleID == i, motif.family == "A")
+
+  nonA_stats <-
+    data.frame(
+      sampleID = i,
+      nonA_num_loci_panel = nrow(nonA_results_stats),
+      nonA_num_2bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 2)),
+      nonA_num_3bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 3)),
+      nonA_num_4bp_loci = length(which(nchar(nonA_results_stats$motif.family) == 4)),
+      nonA_num_loci_passing_filters = length(which(nonA_results_stats$caller != "no call")),
+      nonA_num_2bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller != "no call")),
+      nonA_num_3bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller != "no call")),
+      nonA_num_4bp_loci_passing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller != "no call")),
+      nonA_num_loci_failing_filters = length(which(nonA_results_stats$caller == "no call")),
+      nonA_num_2bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 2 & nonA_results_stats$caller == "no call")),
+      nonA_num_3bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 3 & nonA_results_stats$caller == "no call")),
+      nonA_num_4bp_loci_failing_filters = length(which(nchar(nonA_results_stats$motif.family) == 4 & nonA_results_stats$caller == "no call")),
+      nonA_num_loci_caller_hipstr = length(which(nonA_results_stats$caller == "HipSTR")),
+      nonA_num_loci_caller_gangstr = length(which(nonA_results_stats$caller == "GangSTR")),
+      nonA_num_loci_caller_eh = length(which(nonA_results_stats$caller == "EH")),
+      nonA_num_loci_genotyped = length(which(!is.na(nonA_results_stats$allele_1))),
+      nonA_num_2bp_loci_genotyped = length(which(nchar(nonA_results_stats$motif.family) == 2 & !is.na(nonA_results_stats$allele_1))),
+      nonA_num_3bp_loci_genotyped = length(which(nchar(nonA_results_stats$motif.family) == 3 & !is.na(nonA_results_stats$allele_1))),
+      nonA_num_4bp_loci_genotyped = length(which(nchar(nonA_results_stats$motif.family) == 4 & !is.na(nonA_results_stats$allele_1))),
+      nonA_mean_spanning_depth = mean(nonA_results_stats$B_depth, na.rm = T),
+      nonA_mean_hipstr_stutter = mean(nonA_results_stats$H_STUTTERFRAC, na.rm = T),
+      nonA_mean_hipstr_quality = mean(nonA_results_stats$H_Q, na.rm = T),
+      nonA_mean_gangstr_quality = mean(nonA_results_stats$G_Q, na.rm = T)) %>%
+    
+    mutate(
+      nonA_frac_num_passing_filters_over_nonA_num_loci_panel = nonA_num_loci_passing_filters / nonA_num_loci_panel,
+      nonA_frac_loci_failing_filters_over_nonA_num_loci_panel = nonA_num_loci_failing_filters / nonA_num_loci_panel,
+      nonA_frac_num_caller_hipstr_over_nonA_num_passing_filters = nonA_num_loci_caller_hipstr / nonA_num_loci_passing_filters,
+      nonA_frac_num_caller_gangstr_over_nonA_num_passing_filters = nonA_num_loci_caller_gangstr / nonA_num_loci_passing_filters,
+      nonA_frac_num_caller_eh_over_nonA_num_passing_filters = nonA_num_loci_caller_eh / nonA_num_loci_passing_filters,
+      nonA_frac_loci_genotyped_over_nonA_num_passing_filters = nonA_num_loci_genotyped / nonA_num_loci_passing_filters,
+      nonA_frac_2bp_loci_genotyped_over_nonA_num_passing_filters = nonA_num_2bp_loci_genotyped / nonA_num_loci_passing_filters,
+      nonA_frac_3bp_loci_genotyped_over_nonA_num_passing_filters = nonA_num_3bp_loci_genotyped / nonA_num_loci_passing_filters,
+      nonA_frac_4bp_loci_genotyped_over_nonA_num_passing_filters = nonA_num_4bp_loci_genotyped / nonA_num_loci_passing_filters)
+    
   
-  mutate(
-    nonA_frac_num_passing_filters_over_nonA_num_loci_panel = nonA_num_loci_passing_filters / nonA_num_loci_panel,
-    nonA_frac_loci_failing_filters_over_nonA_num_loci_panel = nonA_num_loci_failing_filters / nonA_num_loci_panel,
-    nonA_frac_num_caller_hipstr_over_nonA_num_passing_filters = nonA_num_loci_caller_hipstr / nonA_num_loci_passing_filters,
-    nonA_frac_num_caller_gangstr_over_nonA_num_passing_filters = nonA_num_loci_caller_gangstr / nonA_num_loci_passing_filters,
-    nonA_frac_num_caller_eh_over_nonA_num_passing_filters = nonA_num_loci_caller_eh / nonA_num_loci_passing_filters)
-  
+  # poly A loci stats  
+  A_stats <-
+    data.frame(
+      A_num_loci_panel = nrow(A_results_stats),
+      A_num_loci_passing_filters = length(which(A_results_stats$caller != "no call")),
+      A_num_loci_failing_filters = length(which(A_results_stats$caller == "no call")),
+      A_num_loci_caller_hipstr = length(which(A_results_stats$caller == "HipSTR" )),
+      A_num_loci_caller_gangstr = length(which(A_results_stats$caller == "GangSTR" )),
+      A_num_loci_caller_eh = length(which(A_results_stats$caller == "EH" )),
+      A_num_loci_genotyped = length(which(!is.na(A_results_stats$allele_1))),
+      A_mean_spanning_depth = mean(A_results_stats$B_depth, na.rm = T),
+      A_mean_hipstr_stutter = mean(A_results_stats$H_STUTTERFRAC, na.rm = T),
+      A_mean_hipstr_quality = mean(A_results_stats$H_Q, na.rm = T),
+      A_mean_gangstr_quality = mean(A_results_stats$G_Q, na.rm = T)) %>%
+    
+    mutate(
+      A_frac_num_passing_filters_over_A_num_loci_panel = A_num_loci_passing_filters / A_num_loci_panel,
+      A_frac_loci_failing_filters_over_A_num_loci_panel = A_num_loci_failing_filters / A_num_loci_panel,
+      A_frac_num_caller_hipstr_over_A_num_passing_filters = A_num_loci_caller_hipstr / A_num_loci_passing_filters,
+      A_frac_num_caller_gangstr_over_A_num_passing_filters = A_num_loci_caller_gangstr / A_num_loci_passing_filters,
+      A_frac_num_caller_eh_over_A_num_passing_filters = A_num_loci_caller_eh / A_num_loci_passing_filters,
+      A_frac_loci_genotyped_over_nonA_num_passing_filters = A_num_loci_genotyped / A_num_loci_passing_filters)
 
-# poly A loci stats  
-A_stats <-
-  data.frame(
-    A_num_loci_panel = nrow(A_results_stats),
-    A_num_loci_passing_filters = length(which(A_results_stats$caller != "no call")),
-    A_num_loci_failing_filters = length(which(A_results_stats$caller == "no call")),
-    A_num_loci_caller_hipstr = length(which(A_results_stats$caller == "HipSTR" )),
-    A_num_loci_caller_gangstr = length(which(A_results_stats$caller == "GangSTR" )),
-    A_num_loci_caller_eh = length(which(A_results_stats$caller == "EH" ))) %>%
-  
-  mutate(
-    A_frac_num_passing_filters_over_A_num_loci_panel = A_num_loci_passing_filters / A_num_loci_panel,
-    A_frac_loci_failing_filters_over_A_num_loci_panel = A_num_loci_failing_filters / A_num_loci_panel,
-    A_frac_num_caller_hipstr_over_A_num_passing_filters = A_num_loci_caller_hipstr / A_num_loci_passing_filters,
-    A_frac_num_caller_gangstr_over_A_num_passing_filters = A_num_loci_caller_gangstr / A_num_loci_passing_filters,
-    A_frac_num_caller_eh_over_A_num_passing_filters = A_num_loci_caller_eh / A_num_loci_passing_filters)
+  statslist[[i]] <- cbind(nonA_stats, A_stats)
 
+}  
 
-all_loci_stats <- cbind(nonA_stats, A_stats)
-
-print(all_loci_stats)
+all_loci_stats <- do.call("rbind",statslist)
 
 # save genotyping QC statistics in TSV file
 write.table(all_loci_stats, file = paste0(sub('\\.rds$', '', args[1]),"_genotype_qc_stats.tsv"), quote = F, row.names = F)
-
 ```
 
 
