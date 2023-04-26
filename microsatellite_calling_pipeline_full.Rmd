@@ -1946,7 +1946,7 @@ for (i in unique(results$sampleID)) {
 all_loci_stats <- do.call("rbind",statslist)
 
 # save genotyping QC statistics in TSV file
-write.table(all_loci_stats, file = paste0(sub('\\.rds$', '', args[1]),"_genotype_qc_stats.tsv"), quote = F, row.names = F)
+write.table(t(all_loci_stats), file = paste0(sub('\\.rds$', '', args[1]),"_genotype_qc_stats.tsv"), quote = F, row.names = T)
 ```
 
 
