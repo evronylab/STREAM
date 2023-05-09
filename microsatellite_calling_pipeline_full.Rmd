@@ -110,11 +110,14 @@ convert_to_EH.sh
 ```{bash}
 #!/bin/bash
 
-# Usage: convert_to_EH.sh [scaleup_usats_full.csv] [full path to EH json output file]
+# Usage: convert_to_EH.sh [Panel CSV] [list of EH exclusion loci] [full path to EH json output file]
 
-# scaleup_usats_full.csv is a csv that contains info directly from the shiny server for all loci in panel
-# scaleup_usats_full.csv format: row.number,seqnames,start,end,width,period.size,motif,motif.family
-# scaleup_usats_full.csv has 1-start, fully closed coordinates
+# Panel CSV is a CSV that contains info directly from the shiny server for all loci in panel
+# Panel CSV format: row.number,seqnames,start,end,width,period.size,motif,motif.family
+# Panel CSV has 1-start, fully closed coordinates
+
+# list of EH exclusion loci is a txt file containing one locus name per line
+# locus name is in the format MS-##### 
 
 # Temp file is in the following tab-delimited format:
 # [LocusId] [LocusStructure] [ReferenceRegion] [VariantType]
@@ -122,22 +125,22 @@ convert_to_EH.sh
 # script subtracts 1 from shiny server start coordinate to make 0-based, half open (BED format)
 # Final output is JSON file for ExpansionHunter 
 
+TMPFILE=$(mktemp -p .)
 OUT=$(mktemp -p .)
 
-echo -e "LocusId\tLocusStructure\tReferenceRegion\tVariantType" > ${OUT}
-awk -F',' -e '{print $1"\t("$7")\*\t"$2":"($3-1)"-"$4"\tRepeat"}' $1 >> ${OUT}
+echo -e "LocusId\tLocusStructure\tReferenceRegion\tVariantType" > ${TMPFILE}
+awk -F',' -e '{print $1"\t("$7")\*\t"$2":"($3-1)"-"$4"\tRepeat"}' $1 >> ${TMPFILE}
 
 # remove loci that cause ExpansionHunter to abort (no way to force program to skip these loci)
 # Error: too many Ns in nearby area
-sed -i '/MS-187187/d' ${OUT}
-sed -i '/MS-499929/d' ${OUT}
-sed -i '/MS-553432/d' ${OUT}
-sed -i '/MS-710766/d' ${OUT}
+
+grep -vwf $2 ${TMPFILE} > ${OUT}
 
 # Send output to R script for conversion to JSON format
-Rscript /scratch/cal8150/uSatAnalysis/scripts/eh_to_json.r ${OUT} $2
+Rscript /scratch/cal8150/uSatAnalysis/scripts/eh_to_json.r ${OUT} $3
 
 # Delete temp file when finished
+rm ${TMPFILE}
 rm ${OUT}
 ```
 
