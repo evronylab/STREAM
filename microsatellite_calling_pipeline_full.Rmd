@@ -262,25 +262,16 @@ NEXTFLOW PIPELINE
 ######################
 
 
-# B. SAMPLE CSV
+# B. SAMPLE TSV
 
-Sample CSV format: sample ID,sex,path/to/read1.fastq,path/to/read2.fastq,trio name
+Sample TSV format: sampleID sex path/to/read1.fastq path/to/read2.fastq trio_name
+Fields are TAB-SEPARATED
+The read 1 and read 2 fields can contain a comma-separated list of FASTQ files for the same sample
+The read 1 and read 2 lists of FASTQ files MUST be in the same order because these are paired reads
 ```{bash}
-NA12877,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R2_001.fastq.gz,1
-NA12889,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R2_001.fastq.gz,1
-NA12890,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R2_001.fastq.gz,1
-NA12878,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12878_S5_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12878_S5_L002_R2_001.fastq.gz,2
-NA12891,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12891_S8_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12891_S8_L002_R2_001.fastq.gz,2
-NA12892,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12892_S9_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12892_S9_L002_R2_001.fastq.gz,2
-NA12413,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12413_S1_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12413_S1_L002_R2_001.fastq.gz,3
-NA12414,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12414_S2_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12414_S2_L002_R2_001.fastq.gz,3
-NA12485,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12485_S3_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12485_S3_L002_R2_001.fastq.gz,3
-UDP-1101,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1101_S1_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1101_S1_L002_R2_001.fastq.gz,UDP-1100
-UDP-1102,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1102_S2_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1102_S2_L002_R2_001.fastq.gz,UDP-1100
-UDP-1104,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1104_S3_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-1104_S3_L002_R2_001.fastq.gz,UDP-1100
-UDP-2101,M,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2101_S4_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2101_S4_L002_R2_001.fastq.gz,UDP-2100
-UDP-2102,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2102_S5_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2102_S5_L002_R2_001.fastq.gz,UDP-2100
-UDP-2103,F,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2103_S6_L002_R1_001.fastq.gz,/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_7-25-22/UDP-2103_S6_L002_R2_001.fastq.gz,UDP-2100
+NA12877   M   /scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R1_001.fastq.gz	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R2_001.fastq.gz	1
+NA12889	M	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R1_001.fastq.gz	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R2_001.fastq.gz	1
+NA12890	F	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R1_001.fastq.gz	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12890_S7_L002_R2_001.fastq.gz	1
 ```
 
 
@@ -295,7 +286,9 @@ process.executor = 'slurm'
 SAMPLES
 */
 
-// CSV with fields: sample,sex,read1,read2,trio
+// TSV with fields: sample,sex,read1,read2,trio
+// read1 and read2 can be a comma-separated list of FASTQ files for the same sample
+// FASTQ files must be listed in the same order in read1 and read2
 params.samples = '/scratch/cal8150/uSatAnalysis/coriell_udp_samples.csv'
 
 
@@ -383,7 +376,7 @@ nextflow.enable.dsl=2
 samples_ch =
 Channel
   .fromPath( params.samples )
-  .splitCsv()
+  .splitCsv( sep: '\t' )
 
 
 /*
@@ -394,16 +387,19 @@ Channel
 
 workflow {
 
-  FASTQC( samples_ch )
-  ALIGN_CRAM( samples_ch )
-  PICARD( ALIGN_CRAM.out.cram )
+  CONCAT_FASTQ( samples_ch )
+  FASTQC( CONCAT_FASTQ.out.fastq )
+  ALIGN_BAM( CONCAT_FASTQ.out.fastq )
+  REMOVE_DUPS( ALIGN_BAM.out.bam )
+  SORT_BAM( REMOVE_DUPS.out.unmarked )
+  PICARD( SORT_BAM.out.cram )
   SPLIT_REGIONS()
-  HIPSTR( ALIGN_CRAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), ALIGN_CRAM.out.index.collect() )
+  HIPSTR( SORT_BAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), SORT_BAM.out.index.collect() )
   CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
   SPLIT_VCF( samples_ch, CONCAT_VCF.out.joint_vcf )
-  EXPANSION_HUNTER( samples_ch.join(ALIGN_CRAM.out.cram) )
-  GANGSTR( samples_ch.join(ALIGN_CRAM.out.cram) )
-  BEDTOOLS_COVERAGE( ALIGN_CRAM.out.cram )
+  EXPANSION_HUNTER( samples_ch.join(SORT_BAM.out.cram) )
+  GANGSTR( samples_ch.join(SORT_BAM.out.cram) )
+  BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
   QUERY_HIPSTR( SPLIT_VCF.out.vcf )
   QUERY_EH( EXPANSION_HUNTER.out.vcf )
   QUERY_GANGSTR( GANGSTR.out.vcf )
@@ -418,6 +414,34 @@ workflow {
   PROCESSES
 
 */
+
+// concatenate separate FASTQ files
+
+process CONCAT_FASTQ {
+
+  time '4h'
+  memory '32 GB'
+
+  input:
+    // load FASTQ files
+    tuple val( sampleID ), val( sex ), val( read1files ), val( read2files ), val( trio )
+
+  output:
+    // save concatenated FASTQ files
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.txt" ), path( "${sampleID}.R2.txt" ), val( trio ), emit: fastq
+
+  script:
+  """
+  IFS="," read -a read1array <<< ${read1files}
+
+  IFS="," read -a read2array <<< ${read2files}
+
+  cat \${read1array[@]} > ${sampleID}.R1.txt
+
+  cat \${read2array[@]} > ${sampleID}.R2.txt
+
+  """
+}
 
 
 // QC raw sequencing data
@@ -452,15 +476,13 @@ process FASTQC {
 }
 
 
-// Make, sort, and index CRAM with PCR duplicates removed
+// Align reads to reference genome
 
-process ALIGN_CRAM {
+process ALIGN_BAM {
 
   time '30h'
-  cpus 20
-  memory '48 GB'
-
-  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+  cpus 16
+  memory '32 GB'
 
   input:
     // load FASTQ files
@@ -468,28 +490,46 @@ process ALIGN_CRAM {
 
   output:
     // output channel for most processes
-    tuple val ( sampleID ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), emit: cram
-    path( "${sampleID}.markdup.metrics.txt" )
-
-    //output channels for HipSTR
-    path( "${sampleID}.cram" ), emit: hipstr
-    path( "${sampleID}.cram.crai" ), emit: index
+    tuple val ( sampleID ), path( "${sampleID}.bam" ), emit: bam
 
   script:
   """
-
   module load ${params.bwa}
-  module load ${params.samtools}
-  module load ${params.gatk}
-  
 
   # Align to reference genome
   # bwa mem -R [read group] -t 16 [reference fasta] [read 1 fastq] [read 2 fastq]
   bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t 16 ${params.reference} ${read1} ${read2} > ${sampleID}.bam
   
+  """
+}
+
+
+// Remove optical duplicates from BAM
+
+process REMOVE_DUPS {
+
+  time '10h'
+  cpus 2
+  memory '32 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy', pattern: "*.markdup.metrics.txt")
+
+  input:
+    // load BAM file
+    tuple val( sampleID ), path( bam )
+
+  output:
+    // output channel for most processes
+    tuple val ( sampleID ), path( "${sampleID}.unmarked.bam" ), emit: unmarked
+    path( "${sampleID}.markdup.metrics.txt" )
+
+  script:
+  """
+  module load ${params.gatk}
+  
   # Remove optical duplicates
   java -jar ${params.picard} MarkDuplicates \\
-    I=${sampleID}.bam \\
+    I=${bam} \\
     O=${sampleID}.markdup.bam \\
     REMOVE_DUPLICATES=false \\
     METRICS_FILE=${sampleID}.markdup.metrics.txt \\
@@ -503,10 +543,39 @@ process ALIGN_CRAM {
   gatk UnmarkDuplicates \
     -I ${sampleID}.markdup.bam \
     -O ${sampleID}.unmarked.bam
+  """
+}
+
+
+// Sort BAM file and output as CRAM
+
+process SORT_BAM {
+
+  time '10h'
+  cpus 2
+  memory '32 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load FASTQ files
+    tuple val( sampleID ), path( unmarked )
+
+  output:
+    // output channel for most processes
+    tuple val ( sampleID ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), emit: cram
+
+    //output channels for HipSTR
+    path( "${sampleID}.cram" ), emit: hipstr
+    path( "${sampleID}.cram.crai" ), emit: index
+
+  script:
+  """
+  module load ${params.samtools}
   
   # Sort BAM  
   java -jar ${params.picard} SortSam \\
-    I=${sampleID}.unmarked.bam \\
+    I=${unmarked} \\
     O=${sampleID}.unmarked.sorted.bam \\
     SORT_ORDER=coordinate \\
     TMP_DIR=${params.sortsam_tmp}; samtools index ${sampleID}.unmarked.sorted.bam
