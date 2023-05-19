@@ -265,9 +265,12 @@ NEXTFLOW PIPELINE
 # B. SAMPLE TSV
 
 Sample TSV format: sampleID sex path/to/read1.fastq path/to/read2.fastq trio_name
-Fields are TAB-SEPARATED
-The read 1 and read 2 fields can contain a comma-separated list of FASTQ files for the same sample
-The read 1 and read 2 lists of FASTQ files MUST be in the same order because these are paired reads
+Fields are TAB-SEPARATED.
+The read 1 and read 2 fields can contain a comma-separated list of FASTQ files for the same sample.
+The read 1 and read 2 lists of FASTQ files MUST be in the same order because these are paired reads.
+If the sample is not part of a trio, the trio name can be set to a random value. Trio values are only used for downstream Mendelian concordance analysis if desired.
+
+Below is a sample TSV that can be used with the pipeline:
 ```{bash}
 NA12877   M   /scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R1_001.fastq.gz	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12877_S4_L002_R2_001.fastq.gz	1
 NA12889	M	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R1_001.fastq.gz	/scratch/projects/evronylab/projects/TAPESTRY/raw_data/Illumina_8-5-22/NA12889_S6_L002_R2_001.fastq.gz	1
@@ -428,7 +431,7 @@ process CONCAT_FASTQ {
 
   output:
     // save concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.txt" ), path( "${sampleID}.R2.txt" ), val( trio ), emit: fastq
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.fastq.gz" ), path( "${sampleID}.R2.fastq.gz" ), val( trio ), emit: fastq
 
   script:
   """
@@ -436,9 +439,9 @@ process CONCAT_FASTQ {
 
   IFS="," read -a read2array <<< ${read2files}
 
-  cat \${read1array[@]} > ${sampleID}.R1.txt
+  cat \${read1array[@]} > ${sampleID}.R1.fastq.gz
 
-  cat \${read2array[@]} > ${sampleID}.R2.txt
+  cat \${read2array[@]} > ${sampleID}.R2.fastq.gz
 
   """
 }
