@@ -653,7 +653,7 @@ process SPLIT_REGIONS {
 
 process HIPSTR {
 
-  time '2h'
+  time '4h'
   memory '32 GB'
 
   input:
@@ -1233,8 +1233,12 @@ if (sex == "M") {
            H_GB_2 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_1_TEMP, H_GB_2_TEMP)) %>%
     # calculate repeat difference
     # fill in -999 for allele 2 on sex chromosomes to indicate it should not be considered a true call
-    mutate(H_REPDIFF_1 = H_GB_1/period.size,
-           H_REPDIFF_2 = if_else((chr == "chrX" | chr == "chrY"), -999, H_GB_2/period.size))
+    mutate(H_REPDIFF_1 = H_GB_1/nchar(motif.family),
+           H_REPDIFF_2 = if_else((chr == "chrX" | chr == "chrY"), -999, H_GB_2/nchar(motif.family))) %>%
+    # calculate repeat count
+    # fill in -999 for allele 2 on sex chromosomes to indicate it should not be considered a true call
+    mutate(H_REPCN_1 = (width + H_GB_1)/nchar(motif.family),
+           H_REPCN_2 = if_else((chr == "chrX" | chr == "chrY"), -999, (width + H_GB_2)/nchar(motif.family)))
   
 } else {
   
@@ -1246,8 +1250,10 @@ if (sex == "M") {
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
     mutate(H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
-    mutate(H_REPDIFF_1 = if_else(chr == "chrY", -999, H_GB_1/period.size), 
-           H_REPDIFF_2 = if_else(chr == "chrY", -999, H_GB_2/period.size))
+    mutate(H_REPDIFF_1 = if_else(chr == "chrY", -999, H_GB_1/nchar(motif.family)), 
+           H_REPDIFF_2 = if_else(chr == "chrY", -999, H_GB_2/nchar(motif.family))) %>%
+    mutate(H_REPCN_1 = if_else(chr == "chrY", -999, (width + H_GB_1)/nchar(motif.family)), 
+           H_REPCN_2 = if_else(chr == "chrY", -999, (width + H_GB_2)/nchar(motif.family)))
 
 }
 
@@ -1837,7 +1843,7 @@ filtering_function <-
 
   # Label caller.two calls
   if(caller.two != "no_caller"){
-    subset_data <- subset_data %>% mutate(caller=if_else(caller == "no call" &    !!as.name(paste0(caller.two,"_passlocus")) == T,caller.two,caller))
+    subset_data <- subset_data %>% mutate(caller=if_else(caller == "no call" & !!as.name(paste0(caller.two,"_passlocus")) == T,caller.two,caller))
   }
   
   # Label caller.three calls
@@ -1848,28 +1854,55 @@ filtering_function <-
 
   # Extract genotypes for all loci with a passing call
   
+  ## REPEAT DIFFERENCE
+  
   # Fill in allele_1
   # Genotypes for caller.one calls, and set remaining to NA
-  subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_1")), NA_real_))
+  subset_data <- subset_data %>% mutate(allele_1_repdiff = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_1")), NA_real_))
   # Genotypes for caller.two calls
   if(caller.two != "no_caller") {
-    subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_1")), allele_1))
+    subset_data <- subset_data %>% mutate(allele_1_repdiff = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_1")), allele_1_repdiff))
   }
   # Genotypes for caller.three calls
   if(caller.three != "no_caller") {
-    subset_data <- subset_data %>% mutate(allele_1 = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_1")), allele_1))
+    subset_data <- subset_data %>% mutate(allele_1_repdiff = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_1")), allele_1_repdiff))
   }
   
   # Fill in allele_2
   # Genotypes for caller.one calls, and set remaining to NA
-  subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_2")), NA_real_))
+  subset_data <- subset_data %>% mutate(allele_2_repdiff = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPDIFF_2")), NA_real_))
   # Genotypes for caller.two calls
   if(caller.two != "no_caller") {
-    subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_2")), allele_2))
+    subset_data <- subset_data %>% mutate(allele_2_repdiff = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPDIFF_2")), allele_2_repdiff))
   }
   # Genotypes for caller.three calls
   if(caller.three != "no_caller") {
-    subset_data <- subset_data %>% mutate(allele_2 = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_2")), allele_2))
+    subset_data <- subset_data %>% mutate(allele_2_repdiff = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPDIFF_2")), allele_2_repdiff))
+  }
+  
+  ## REPEAT COUNT
+  # Fill in allele_1
+  # Genotypes for caller.one calls, and set remaining to NA
+  subset_data <- subset_data %>% mutate(allele_1_repcn = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPCN_1")), NA_real_))
+  # Genotypes for caller.two calls
+  if(caller.two != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_1_repcn = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPCN_1")), allele_1_repcn))
+  }
+  # Genotypes for caller.three calls
+  if(caller.three != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_1_repcn = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPCN_1")), allele_1_repcn))
+  }
+  
+  # Fill in allele_2
+  # Genotypes for caller.one calls, and set remaining to NA
+  subset_data <- subset_data %>% mutate(allele_2_repcn = if_else(caller == caller.one & !!as.name(paste0(caller.one,"_passsample")) == T, !!as.name(paste0(substr(caller.one,1,1),"_REPCN_2")), NA_real_))
+  # Genotypes for caller.two calls
+  if(caller.two != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_2_repcn = if_else(caller == caller.two & !!as.name(paste0(caller.two,"_passsample")) == T, !!as.name(paste0(substr(caller.two,1,1),"_REPCN_2")), allele_2_repcn))
+  }
+  # Genotypes for caller.three calls
+  if(caller.three != "no_caller") {
+    subset_data <- subset_data %>% mutate(allele_2_repcn = if_else(caller == caller.three & !!as.name(paste0(caller.three,"_passsample")) == T, !!as.name(paste0(substr(caller.three,1,1),"_REPCN_2")), allele_2_repcn))
   }
   
   
