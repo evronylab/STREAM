@@ -262,7 +262,8 @@ gbm_bed_to_interval_list.sh
 
 # SBATCH --time=100
 
-# Usage: gbm_bed_to_interval_list.sh [gbm_panel.bed] [output file basename] [reference genome dictionary file]
+# Usage: gbm_bed_to_interval_list.sh [gbm_panel.bed] [output file full path] [reference genome dictionary file]
+# output file must end in .interval_list
 
 # gbm_panel.bed is a bed that contains the coordinates for the targets of the GBM capture panel
 # gbm_panel.bed has 0-start, half-open coordinates
@@ -274,7 +275,7 @@ module load jdk/11.0.9
 
 java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
           I=$1 \
-          O=$(dirname $1)/$2.interval_list \
+          O=$2 \
           SD=$3
 
 ```
@@ -282,7 +283,7 @@ java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
 ```{bash}
 # Example command line input
 
-sbatch /scratch/cal8150/uSatAnalysis/scripts/gbm_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/gbm_panel.bed /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
+sbatch /scratch/cal8150/uSatAnalysis/scripts/gbm_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/gbm_panel.bed /scratch/cal8150/uSatAnalysis/scripts/gbm_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/gbm_panel.interval_list /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
 ```
 
 
