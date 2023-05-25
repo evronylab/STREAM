@@ -202,7 +202,7 @@ awk -F',' -e '{print $2"\t"($3-1)"\t"$4"\t"$1}' $1 > $2
 ```
 
 
-### e. Make Picard interval list
+### e. Make Picard interval list (microsatellites)
 
 bed_to_interval_list.sh
 ```{bash}
@@ -244,6 +244,43 @@ java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
 
 rm ${USAT}
 rm ${BAIT}
+
+# Interval list coordinates are 0-start, half-open
+```
+
+```{bash}
+# Command line input
+
+sbatch /scratch/cal8150/uSatAnalysis/scripts/bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/uSatAnalysis/scaleup_merged_probes.txt /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
+```
+
+### f. Make interval list (GBM panel)
+
+gbm_bed_to_interval_list.sh
+```{bash}
+#!/bin/bash
+
+# SBATCH --time=100
+
+# Usage: gbm_bed_to_interval_list.sh [gbm_panel.bed] [reference genome dictionary file]
+
+# gbm_panel.bed is a bed that contains the coordinates for the targets of the GBM capture panel
+# gbm_panel.bed has 1-start, fully closed coordinates
+# requires gbm_panel.bed to be in the following order:
+# [chr] [start] [end]
+
+module load jdk/11.0.9
+
+GBM=$(mktemp -p .)
+
+awk -F'\t' -e '{print $1"\t"($2-1)"\t"$3}' $1 > ${GBM}
+
+java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
+          I=${GBM} \
+          O=$(dirname $1)/$(basename $1 .csv).interval_list \
+          SD=$2
+
+rm ${GBM}
 
 # Interval list coordinates are 0-start, half-open
 ```
@@ -318,6 +355,8 @@ params.gangstr_usats = '/scratch/cal8150/GangSTR/scaleup_usats_gangstr.txt'
 params.eh_usats = '/scratch/cal8150/expansionhunter/scaleup_usats_eh.json'
 // Microsatellite coordinates in BED format
 params.bedtools_usats = '/scratch/cal8150/uSatAnalysis/loci/scaleup_usats_bedtools.bed'
+// GBM variant panel (if none, set to false)
+params.gbm_panel = false
 
 
 /*
@@ -349,7 +388,7 @@ params.hipstr = '/scratch/projects/evronylab/bin/HipSTR/HipSTR'
 params.gangstr = 'gangstr/intel/2.5.0'
 params.eh = 'expansion-hunter/5.0.0'
 params.bedtools = 'bedtools/intel/2.29.2'
-params.gatk = 'gatk/4.2.4.1'
+params.gatk = 'gatk/4.3.0.0'
 
 
 /*
@@ -403,6 +442,10 @@ workflow {
   EXPANSION_HUNTER( samples_ch.join(SORT_BAM.out.cram) )
   GANGSTR( samples_ch.join(SORT_BAM.out.cram) )
   BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
+  if( params.gbm_panel )
+    GBM_VARIANTS( SORT_BAM.out.cram )
+  else
+    println 'no GBM variant panel'
   QUERY_HIPSTR( SPLIT_VCF.out.vcf )
   QUERY_EH( EXPANSION_HUNTER.out.vcf )
   QUERY_GANGSTR( GANGSTR.out.vcf )
@@ -885,6 +928,49 @@ process BEDTOOLS_COVERAGE {
 
   """
 }
+
+
+// Genotype variants from GBM panel if present
+
+process GBM_VARIANTS {
+
+  time '8h'
+  cpus 2
+  memory '32 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load CRAM
+    tuple val( sampleID ), path( cram ), path( index )
+
+  output:
+    // save variant calls
+    tuple val( sampleID ), path( "${sampleID}.GATK.g.vcf.gz" ), path( "${sampleID}.GATK.g.vcf.gz.tbi" ), path( "${sampleID}.GATK.vcf.gz" ), path( "${sampleID}.GATK.vcf.gz.tbi" )
+
+  script:
+  """
+  module load ${params.gatk}
+
+  gatk --java-options "-Xmx20g" HaplotypeCaller \
+    -I ${cram} -O ${sampleID}.GATK.g.vcf.gz \
+    -R ${params.reference} \
+    --intervals ${params.gbm_panel} \
+    -ERC GVCF \
+    -G StandardAnnotation \
+    -G StandardHCAnnotation \
+    -G AS_StandardAnnotation \
+    --max-reads-per-alignment-start 0
+  
+  gatk GenotypeGVCFs \
+    -R ${params.reference} \
+    --intervals ${params.gbm_panel} \
+    -V ${sampleID}.GATK.g.vcf.gz \
+    -O ${sampleID}.GATK.vcf.gz
+
+  """
+}
+
 
 
 /*
