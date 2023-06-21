@@ -254,20 +254,20 @@ rm ${BAIT}
 sbatch /scratch/cal8150/uSatAnalysis/scripts/bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/scaleup_usats_full.csv /scratch/cal8150/uSatAnalysis/scaleup_merged_probes.txt /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
 ```
 
-### f. Make interval list (GBM panel)
+### f. Make interval list (supplementary panel)
 
-gbm_bed_to_interval_list.sh
+supp_bed_to_interval_list.sh
 ```{bash}
 #!/bin/bash
 
 # SBATCH --time=100
 
-# Usage: gbm_bed_to_interval_list.sh [gbm_panel.bed] [output file full path] [reference genome dictionary file]
+# Usage: supp_bed_to_interval_list.sh [supp_panel.bed] [output file full path] [reference genome dictionary file]
 # output file must end in .interval_list
 
-# gbm_panel.bed is a bed that contains the coordinates for the targets of the GBM capture panel
-# gbm_panel.bed has 0-start, half-open coordinates
-# requires gbm_panel.bed to be in the following order:
+# supp_panel.bed is a bed that contains the coordinates for the targets of the supplementary capture panel
+# supp_panel.bed has 0-start, half-open coordinates
+# requires supp_panel.bed to be in the following order:
 # [chr] [start] [end]
 # Interval list coordinates are 0-start, half-open
 
@@ -283,7 +283,7 @@ java -jar /scratch/projects/evronylab/bin/gatk/picard.jar BedToIntervalList \
 ```{bash}
 # Example command line input
 
-sbatch /scratch/cal8150/uSatAnalysis/scripts/gbm_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/gbm_panel.bed /scratch/cal8150/uSatAnalysis/scripts/gbm_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/gbm_panel.interval_list /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
+sbatch /scratch/cal8150/uSatAnalysis/scripts/supp_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/supp_panel.bed /scratch/cal8150/uSatAnalysis/scripts/supp_bed_to_interval_list.sh /scratch/cal8150/uSatAnalysis/loci/supp_panel.interval_list /scratch/projects/evronylab/reference-files/hg38-gatk/Homo_sapiens_assembly38.dict
 ```
 
 
@@ -350,8 +350,8 @@ params.gangstr_usats = '/scratch/cal8150/GangSTR/scaleup_usats_gangstr.txt'
 params.eh_usats = '/scratch/cal8150/expansionhunter/scaleup_usats_eh.json'
 // Microsatellite coordinates in BED format
 params.bedtools_usats = '/scratch/cal8150/uSatAnalysis/loci/scaleup_usats_bedtools.bed'
-// GBM variant panel (if none, set to false)
-params.gbm_panel = false
+// Supplementary variant panel (if none, set to false)
+params.supp_panel = false
 
 
 /*
@@ -437,10 +437,10 @@ workflow {
   EXPANSION_HUNTER( samples_ch.join(SORT_BAM.out.cram) )
   GANGSTR( samples_ch.join(SORT_BAM.out.cram) )
   BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
-  if( params.gbm_panel )
-    GBM_VARIANTS( SORT_BAM.out.cram )
+  if( params.supp_panel )
+    SUPP_VARIANTS( SORT_BAM.out.cram )
   else
-    println 'Not performing GBM panel genotyping, since no panel specified'
+    println 'Not performing supplementary panel genotyping, since no panel specified'
   QUERY_HIPSTR( SPLIT_VCF.out.vcf )
   QUERY_EH( EXPANSION_HUNTER.out.vcf )
   QUERY_GANGSTR( GANGSTR.out.vcf )
@@ -926,9 +926,9 @@ process BEDTOOLS_COVERAGE {
 }
 
 
-// Genotype variants from GBM panel if present
+// Genotype variants from supplementary panel if present
 
-process GBM_VARIANTS {
+process SUPP_VARIANTS {
 
   time '8h'
   cpus 2
@@ -951,7 +951,7 @@ process GBM_VARIANTS {
   gatk --java-options "-Xmx20g" HaplotypeCaller \
     -I ${cram} -O ${sampleID}.GATK.g.vcf.gz \
     -R ${params.reference} \
-    --intervals ${params.gbm_panel} \
+    --intervals ${params.supp_panel} \
     -ERC GVCF \
     -G StandardAnnotation \
     -G StandardHCAnnotation \
@@ -961,7 +961,7 @@ process GBM_VARIANTS {
   
   gatk GenotypeGVCFs \
     -R ${params.reference} \
-    --intervals ${params.gbm_panel} \
+    --intervals ${params.supp_panel} \
     -V ${sampleID}.GATK.g.vcf.gz \
     -O ${sampleID}.GATK.vcf.gz
 
