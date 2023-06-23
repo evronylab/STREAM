@@ -2505,9 +2505,6 @@ error_report_function <-
            min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
            min.total.reads.eh, min.allele.reads.eh, min.vaf.eh, max.vaf.eh, min.lc.eh,
            min.mean.total.reads.eh, min.sample.frac.eh) {
-
-  # get number of samples from table
-  num_samples = n_distinct(subset_data$sampleID)
     
   ## Sample-level filters
 
