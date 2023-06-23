@@ -367,7 +367,7 @@ params.outputbasename = 'coriell_udp'
 params.script_path = '/scratch/cal8150/uSatAnalysis/templates'
 
 // Temporary directory for gatk jobs
-params.gatk_tmp = '/state/partition1/\$TMPDIR'
+params.gatk_tmp = '\$TMPDIR'
 
 
 /*
@@ -620,7 +620,7 @@ process SORT_BAM {
     I=${unmarked} \\
     O=${sampleID}.unmarked.sorted.bam \\
     SORT_ORDER=coordinate \\
-    TMP_DIR=${params.sortsam_tmp}; samtools index ${sampleID}.unmarked.sorted.bam
+    TMP_DIR=${params.gatk_tmp}; samtools index ${sampleID}.unmarked.sorted.bam
   
   # Convert to CRAM
   samtools view -F 2304 -C -T ${params.reference} --write-index -O cram -@4 -o ${sampleID}.cram##idx##${sampleID}.cram.crai ${sampleID}.unmarked.sorted.bam
@@ -2491,6 +2491,155 @@ A_loci <-
            A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh, A.max.vaf.eh, A.min.lc.eh,
            A.min.mean.total.reads.eh, A.min.sample.frac.eh,
            A.caller.one, A.caller.two, A.caller.three)
+
+
+# Report which filter caused a locus to fail
+
+error_report_function <-
+  function(subset_data,
+           min.qual.hipstr, min.mallreads.hipstr, min.allreads.hipstr,
+           min.allele.mallreads.hipstr, min.allele.allreads.hipstr, min.mvaf.hipstr, min.avaf.hipstr,
+           max.stutter.frac.hipstr, max.flankindel.frac.hipstr, min.gldiff.hipstr,
+           min.mean.qual.hipstr, min.mean.mallreads.hipstr, min.mean.allreads.hipstr, min.sample.frac.hipstr,
+           min.qual.gangstr, min.total.reads.gangstr, min.allele.reads.gangstr, min.vaf.gangstr,
+           min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
+           min.total.reads.eh, min.allele.reads.eh, min.vaf.eh, max.vaf.eh, min.lc.eh,
+           min.mean.total.reads.eh, min.sample.frac.eh) {
+
+  # get number of samples from table
+  num_samples = n_distinct(subset_data$sampleID)
+    
+  ## Sample-level filters
+
+  # fill with name of filter if failed
+  # fill with "none" if passed
+  # allele 2 filters are applied only to autosomes and female sex chromsomes
+
+  subset_data <- subset_data %>%
+
+    mutate(sample_failed_filters = "none") %>%
+    mutate(sample_failed_filters = if_else(H_GT != "." & !is.na(H_GT),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_GT",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_Q >= min.qual.hipstr & !is.na(H_Q),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_Q",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_MALLREADS_SUM >= min.mallreads.hipstr & !is.na(H_MALLREADS_SUM),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_MALLREADS_SUM",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_ALLREADS_SUM >= min.allreads.hipstr & !is.na(H_ALLREADS_SUM),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_ALLREADS_SUM",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_MALLREADS_1 >= min.allele.mallreads.hipstr & !is.na(H_MALLREADS_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_MALLREADS_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             H_MALLREADS_2 >= min.allele.mallreads.hipstr & !is.na(H_MALLREADS_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_MALLREADS_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_ALLREADS_1 >= min.allele.allreads.hipstr & !is.na(H_ALLREADS_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_ALLREADS_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             H_ALLREADS_2 >= min.allele.allreads.hipstr & !is.na(H_ALLREADS_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_ALLREADS_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_MVAF_1 >= min.mvaf.hipstr & !is.na(H_MVAF_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_MVAF_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             H_MVAF_2 >= min.mvaf.hipstr & !is.na(H_MVAF_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_MVAF_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_AVAF_1 >= min.avaf.hipstr & !is.na(H_AVAF_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_AVAF_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             H_AVAF_2 >= min.avaf.hipstr & !is.na(H_AVAF_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_AVAF_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_STUTTERFRAC <= max.stutter.frac.hipstr & !is.na(H_STUTTERFRAC),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_STUTTERFRAC",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_FLINDELFRAC",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"H_GLDIFF",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(G_GT != "." & !is.na(G_GT),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_GT",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(G_Q >= min.qual.gangstr & !is.na(G_Q),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_Q",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(G_ENCLREADS_SUM >= min.total.reads.gangstr & !is.na(G_ENCLREADS_SUM),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_ENCLREADS_SUM",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(G_ENCLREADS_1 >= min.allele.reads.gangstr & !is.na(G_ENCLREADS_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_ENCLREADS_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             G_ENCLREADS_2 >= min.allele.reads.gangstr & !is.na(G_ENCLREADS_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_ENCLREADS_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_VAF_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             G_VAF_2 >= min.vaf.gangstr & !is.na(G_VAF_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"G_VAF_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(E_GT != "." & !is.na(E_GT),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_GT",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(B_depth >= min.total.reads.eh & !is.na(B_depth),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"B_depth",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(E_ADSP_1 >= min.allele.reads.eh & !is.na(E_ADSP_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_ADSP_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             E_ADSP_2 >= min.allele.reads.eh & !is.na(E_ADSP_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_ADSP_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(E_VAF_1 >= min.vaf.eh & E_VAF_1 <= max.vaf.eh & !is.na(E_VAF_1),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_VAF_1",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) &
+                                             E_VAF_2 >= min.vaf.eh & E_VAF_2 <= max.vaf.eh & !is.na(E_VAF_2),
+                                             sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_VAF_2",sep=";"),"none;"))) %>%
+    mutate(sample_failed_filters = if_else(E_LC >= min.lc.eh & !is.na(E_LC),
+                                           sample_failed_filters,str_remove(str_c(sample_failed_filters,"E_LC",sep=";"),"none;"))) %>%
+         
+  ## Locus-level filters
+    
+  # fill with name of filter if failed
+  # fill with "none" if passed
+  
+    mutate(locus_failed_filters = "none") %>%
+    mutate(locus_failed_filters = if_else(mean_qual_H >= min.mean.qual.hipstr & !is.na(mean_qual_H),
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_qual_H",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(mean_qual_G >= min.mean.qual.gangstr & !is.na(mean_qual_G),
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_qual_G",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(mean_mdepth_H >= min.mean.mallreads.hipstr,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_mdepth_H",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(mean_adepth_H >= min.mean.allreads.hipstr,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_adepth_H",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(mean_depth_G >= min.mean.total.reads.gangstr,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_depth_G",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(mean_depth_E >= min.mean.total.reads.eh,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"mean_depth_E",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(sample_frac_filter_H == T,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"sample_frac_filter_H",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(sample_frac_filter_G == T,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"sample_frac_filter_G",sep=";"),"none;"))) %>%
+    mutate(locus_failed_filters = if_else(sample_frac_filter_E == T,
+                                          locus_failed_filters,str_remove(str_c(locus_failed_filters,"sample_frac_filter_E",sep=";"),"none;")))
+  
+  return(subset_data)
+
+} # END OF ERROR FUNCTION
+
+
+# Run error reporting on non-poly-A loci
+nonA_loci <-
+  filtering_function(nonA_loci,
+           nonA.min.qual.hipstr, nonA.min.mallreads.hipstr, nonA.min.allreads.hipstr,
+           nonA.min.allele.mallreads.hipstr, nonA.min.allele.allreads.hipstr, nonA.min.mvaf.hipstr, nonA.min.avaf.hipstr,
+           nonA.max.stutter.frac.hipstr, nonA.max.flankindel.frac.hipstr, nonA.min.gldiff.hipstr,
+           nonA.min.mean.qual.hipstr, nonA.min.mean.mallreads.hipstr, nonA.min.mean.allreads.hipstr, nonA.min.sample.frac.hipstr,
+           nonA.min.qual.gangstr, nonA.min.total.reads.gangstr, nonA.min.allele.reads.gangstr, nonA.min.vaf.gangstr,
+           nonA.min.mean.qual.gangstr, nonA.min.mean.total.reads.gangstr, nonA.min.sample.frac.gangstr,
+           nonA.min.total.reads.eh, nonA.min.allele.reads.eh, nonA.min.vaf.eh, nonA.max.vaf.eh, nonA.min.lc.eh,
+           nonA.min.mean.total.reads.eh, nonA.min.sample.frac.eh)
+
+
+# Run error reporting on poly-A loci
+A_loci <-
+  filtering_function(A_loci,
+           A.min.qual.hipstr, A.min.mallreads.hipstr, A.min.allreads.hipstr,
+           A.min.allele.mallreads.hipstr, A.min.allele.allreads.hipstr, A.min.mvaf.hipstr, A.min.avaf.hipstr,
+           A.max.stutter.frac.hipstr, A.max.flankindel.frac.hipstr, A.min.gldiff.hipstr,
+           A.min.mean.qual.hipstr, A.min.mean.mallreads.hipstr, A.min.mean.allreads.hipstr, A.min.sample.frac.hipstr,
+           A.min.qual.gangstr, A.min.total.reads.gangstr, A.min.allele.reads.gangstr, A.min.vaf.gangstr,
+           A.min.mean.qual.gangstr, A.min.mean.total.reads.gangstr, A.min.sample.frac.gangstr,
+           A.min.total.reads.eh, A.min.allele.reads.eh, A.min.vaf.eh, A.max.vaf.eh, A.min.lc.eh,
+           A.min.mean.total.reads.eh, A.min.sample.frac.eh)
+
 
 # Define chromosome sort order
 chrOrder <-c(paste0("chr",1:22),"chrX", "chrY")
