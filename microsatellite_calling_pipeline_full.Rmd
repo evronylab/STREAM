@@ -721,9 +721,28 @@ process HIPSTR {
 
   # Make comma separated list of CRAMs
   BAMS=\$(echo ${cram} | sed 's/ /,/g')
+  
+  # Check if all samples are male
+  CHECK_SEX=\$(cut -f 2 ${params.samples} | sort | uniq)
+  
+  if [ "\$CHECK_SEX" = "M" ]; then
+  
+   # run HipSTR with halpoid X/Y calling if all male
+    ${params.hipstr} \
+      --bams \${BAMS} \
+      --fasta ${params.reference} \
+      --regions ${usats} \
+      --str-vcf array_${usats}_hipstr.vcf.gz \
+      --min-reads 20 \
+      --max-str-len 150 \
+      --no-rmdup \
+      --haploid-chrs chrX,chrY \
+      --output-filters; bcftools index array_${usats}_hipstr.vcf.gz
+  
+  else
 
-  # run HipSTR
-  ${params.hipstr} \
+    # run HipSTR with diploid calling if not all male
+    ${params.hipstr} \
       --bams \${BAMS} \
       --fasta ${params.reference} \
       --regions ${usats} \
@@ -732,6 +751,8 @@ process HIPSTR {
       --max-str-len 150 \
       --no-rmdup \
       --output-filters; bcftools index array_${usats}_hipstr.vcf.gz
+      
+  fi
 
   """
 }
@@ -1263,7 +1284,7 @@ results <-
                           B_depth == 0 & sex == "F" ~ "./.",
                           B_depth == 0 & sex == "M" & (chr == "chrX" | chr == "chrY") ~ ".", .default = E_GT)) %>%
   # replace any B_depth of 0 or B_depth with no EH call with NA for accurate calculation of mean depth
-  mutate(B_depth = case_when(B_depth == 0 ~ NA_integer_, E_GT == "./." | E_GT == "." ~ NA_integer_, .default = B_depth)) %>%
+  mutate(B_depth = case_when(B_depth == 0 ~ NA, E_GT == "./." | E_GT == "." ~ NA, .default = B_depth)) %>%
   # separate fields giving base pair/repeat difference from reference into column for each allele
   separate(H_GB,c("H_GB_1_TEMP","H_GB_2_TEMP"), sep="\\|", fill="right", remove=F) %>%
   separate(E_REPCN, c("E_REPCN_1","E_REPCN_2"), sep="/", fill="right", remove=F) %>%
@@ -1299,23 +1320,25 @@ if (sex == "M") {
     # fill in permanent H_MALLREADS columns
     # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
     mutate(H_MALLREADS_1 = 
-             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), 
-                     H_MALLREADS_2_TEMP, H_MALLREADS_1_TEMP),
+             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_1_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP, na.rm = T), 
+                     H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP),
            H_MALLREADS_2 =
-             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), 
-                     H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP)) %>%
+             if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_1_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP, na.rm = T), 
+                     H_MALLREADS_2_TEMP, H_MALLREADS_1_TEMP)) %>%
     # fill in permanent H_ALLREADS columns
     # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
     mutate(H_ALLREADS_1 = 
-             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_2_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP), 
-                     H_ALLREADS_2_TEMP, H_ALLREADS_1_TEMP),
+             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_1_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP, na.rm = T), 
+                     H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP),
            H_ALLREADS_2 =
-             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_2_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP), 
-                     H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP)) %>%
+             if_else((chr == "chrX" | chr == "chrY") & H_ALLREADS_1_TEMP == pmax(H_ALLREADS_1_TEMP, H_ALLREADS_2_TEMP, na.rm = T), 
+                     H_ALLREADS_2_TEMP, H_ALLREADS_1_TEMP)) %>%
     # fill in permanent H_GB columns
     # if on a sex chromosome, fill allele 1 with the allele with the maximum read count
-    mutate(H_GB_1 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_2_TEMP, H_GB_1_TEMP),
-           H_GB_2 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_1_TEMP, H_GB_2_TEMP)) %>%
+    mutate(H_GB_1 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_1_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP, na.rm = T), 
+                            H_GB_1_TEMP, H_GB_2_TEMP),
+           H_GB_2 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_1_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP, na.rm = T), 
+                            H_GB_2_TEMP, H_GB_1_TEMP)) %>%
     # calculate repeat difference
     # fill in NA for allele 2 on sex chromosomes to indicate it should not be considered a true call
     mutate(H_REPDIFF_1 = H_GB_1/motifLength,
