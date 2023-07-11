@@ -1211,7 +1211,7 @@ process JOIN_SAMPLES {
 # From the two alleles given in the H_GB field, we will choose the one associated with the higher H_MALLREADS count as the "true" allele
 # If the true allele is in the allele 2 position initially in H_GB and H_MALLREADS, H_GB_1 and H_MALLREADS_1 will be swapped with H_GB_2 and H_MALLREADS_2
 # This ensures that allele 1 in the final table is always the allele with most reads on the sex chromosomes
-# We will replace H_REPDIFF_2 on sex chromosomes with -999 to indicate allele 2 should not be considered for concordance
+# We will replace H_REPDIFF_2 on sex chromosomes with NA to indicate allele 2 should not be considered for concordance
 
 
 library(dplyr)
@@ -1261,9 +1261,9 @@ results <-
   # replace any EH genotype that has B_depth of 0 with "./." on autosomes and "." on sex chromosomes
   mutate(E_GT = case_when(B_depth == 0 & sex == "M" & chr != "chrX" & chr != "chrY" ~ "./.",
                           B_depth == 0 & sex == "F" ~ "./.",
-                          B_depth == 0 & sex == "M" & (chr == "chrX" | chr == "chrY") ~ ".", TRUE ~ E_GT)) %>%
+                          B_depth == 0 & sex == "M" & (chr == "chrX" | chr == "chrY") ~ ".", .default = E_GT)) %>%
   # replace any B_depth of 0 or B_depth with no EH call with NA for accurate calculation of mean depth
-  mutate(B_depth = case_when(B_depth == 0 ~ NA_integer_, E_GT == "./." | E_GT == "." ~ NA_integer_, TRUE ~ B_depth)) %>%
+  mutate(B_depth = case_when(B_depth == 0 ~ NA_integer_, E_GT == "./." | E_GT == "." ~ NA_integer_, .default = B_depth)) %>%
   # separate fields giving base pair/repeat difference from reference into column for each allele
   separate(H_GB,c("H_GB_1_TEMP","H_GB_2_TEMP"), sep="\\|", fill="right", remove=F) %>%
   separate(E_REPCN, c("E_REPCN_1","E_REPCN_2"), sep="/", fill="right", remove=F) %>%
@@ -1317,28 +1317,28 @@ if (sex == "M") {
     mutate(H_GB_1 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_2_TEMP, H_GB_1_TEMP),
            H_GB_2 = if_else((chr == "chrX" | chr == "chrY") & H_MALLREADS_2_TEMP == pmax(H_MALLREADS_1_TEMP, H_MALLREADS_2_TEMP), H_GB_1_TEMP, H_GB_2_TEMP)) %>%
     # calculate repeat difference
-    # fill in -999 for allele 2 on sex chromosomes to indicate it should not be considered a true call
+    # fill in NA for allele 2 on sex chromosomes to indicate it should not be considered a true call
     mutate(H_REPDIFF_1 = H_GB_1/motifLength,
-           H_REPDIFF_2 = if_else((chr == "chrX" | chr == "chrY"), -999, H_GB_2/motifLength)) %>%
+           H_REPDIFF_2 = case_when((chr == "chrX" | chr == "chrY") ~ NA, .default = H_GB_2/motifLength)) %>%
     # calculate repeat count
-    # fill in -999 for allele 2 on sex chromosomes to indicate it should not be considered a true call
+    # fill in NA for allele 2 on sex chromosomes to indicate it should not be considered a true call
     mutate(H_REPCN_1 = (width + H_GB_1)/motifLength,
-           H_REPCN_2 = if_else((chr == "chrX" | chr == "chrY"), -999, (width + H_GB_2)/motifLength))
+           H_REPCN_2 = case_when((chr == "chrX" | chr == "chrY") ~ NA, .default = (width + H_GB_2)/motifLength))
   
 } else {
   
   # fill in all permanent columns with their corresponding temporary column
   # since sample is female, chrX has 2 alleles and can be filled as autosomes
-  # fill in -999 for any chrY calls to indicate it should not be considered a true call
+  # fill in NA for any chrY calls to indicate it should not be considered a true call
   results <- results %>% 
     mutate(H_MALLREADS_1 = H_MALLREADS_1_TEMP, H_MALLREADS_2 = H_MALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
     mutate(H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
-    mutate(H_REPDIFF_1 = if_else(chr == "chrY", -999, H_GB_1/motifLength), 
-           H_REPDIFF_2 = if_else(chr == "chrY", -999, H_GB_2/motifLength)) %>%
-    mutate(H_REPCN_1 = if_else(chr == "chrY", -999, (width + H_GB_1)/motifLength), 
-           H_REPCN_2 = if_else(chr == "chrY", -999, (width + H_GB_2)/motifLength))
+    mutate(H_REPDIFF_1 = case_when(chr == "chrY" ~ NA, .default = H_GB_1/motifLength), 
+           H_REPDIFF_2 = case_when(chr == "chrY" ~ NA, .default = H_GB_2/motifLength)) %>%
+    mutate(H_REPCN_1 = case_when(chr == "chrY" ~ NA, .default = (width + H_GB_1)/motifLength), 
+           H_REPCN_2 = case_when(chr == "chrY" ~ NA, .default = (width + H_GB_2)/motifLength))
 
 }
 
@@ -1793,7 +1793,7 @@ filtering_function <-
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
                      # if any filter failed
-                     TRUE ~ FALSE)) %>%
+                     .default = FALSE)) %>%
     
   # GangSTR
   mutate(GangSTR_passsample =
@@ -1828,7 +1828,7 @@ filtering_function <-
                      G_VAF_2 >= min.vaf.gangstr & !is.na(G_VAF_2)~ TRUE,
 
                      # if any filter failed
-                     TRUE ~ FALSE)) %>%
+                     .default = FALSE)) %>%
     
   # Expansion Hunter
   mutate(EH_passsample =
@@ -1867,7 +1867,7 @@ filtering_function <-
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
                     # if any filter failed
-                    TRUE ~ FALSE))
+                    .default = FALSE))
 
   ## Locus-level filters
 
@@ -2263,7 +2263,7 @@ filtering_function <-
                      (H_GLDIFF >= min.gldiff.hipstr | is.na(H_GLDIFF)) ~ TRUE,
 
                      # if any filter failed
-                     TRUE ~ FALSE)) %>%
+                     .default = FALSE)) %>%
     
   # GangSTR
   mutate(GangSTR_passsample =
@@ -2298,7 +2298,7 @@ filtering_function <-
                      G_VAF_2 >= min.vaf.gangstr & !is.na(G_VAF_2)~ TRUE,
 
                      # if any filter failed
-                     TRUE ~ FALSE)) %>%
+                     .default = FALSE)) %>%
     
   # Expansion Hunter
   mutate(EH_passsample =
@@ -2337,7 +2337,7 @@ filtering_function <-
                     E_LC >= min.lc.eh & !is.na(E_LC) ~ TRUE,
 
                     # if any filter failed
-                    TRUE ~ FALSE))
+                    .default = FALSE))
 
   ## Locus-level filters
 
@@ -2509,7 +2509,7 @@ error_report_function <-
   ## Sample-level filters
 
   # fill with name of filter if failed
-  # fill with "none" if passed
+  # fill with blank if passed
   # allele 2 filters are applied only to autosomes and female sex chromsomes
 
   subset_data <- subset_data %>%
@@ -2596,9 +2596,9 @@ error_report_function <-
   ## Locus-level filters
     
   # fill with name of filter if failed
-  # fill with "none" if passed
+  # fill with blank if passed
   
-    mutate(locus_failed_filters = "none") %>%
+    mutate(locus_failed_filters = "") %>%
     mutate(locus_failed_filters = if_else(mean_qual_H >= min.mean.qual.hipstr & !is.na(mean_qual_H),
                                           locus_failed_filters,str_c(locus_failed_filters,"min.mean.qual.hipstr",";"))) %>%
     mutate(locus_failed_filters = if_else(mean_qual_G >= min.mean.qual.gangstr & !is.na(mean_qual_G),
@@ -2837,7 +2837,7 @@ if (config$sample$sex.of.child == "M") {
              # is either maternal allele present in the child?
              (get(mother_1) == get(child_1) | get(mother_2) == get(child_1)) &
              # is the first child allele present in the mother?
-             # second allele on X chromosome is always -999 in males
+             # second allele on X chromosome is always NA in males
              get(child_1) %in% c(get(mother_1),get(mother_2)) ~ TRUE,
              
            # if the chromosome is Y and call is concordant
@@ -2871,7 +2871,7 @@ if (config$sample$sex.of.child == "M") {
              chr != "chrX" & chr != "chrY" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant
-             TRUE ~ FALSE))
+             .default = FALSE))
 
 } else {
 
@@ -2915,7 +2915,7 @@ if (config$sample$sex.of.child == "M") {
              chr != "chrX" & chr != "chrY" & anyNA(c(get(father_1),get(father_2),get(mother_1),get(mother_2),get(child_1),get(child_2))) ~ NA,
 
            # if the call is discordant,
-             TRUE ~ FALSE))
+             .default = FALSE))
 }
 
 
