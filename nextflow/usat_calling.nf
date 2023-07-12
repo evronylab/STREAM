@@ -41,6 +41,7 @@ workflow {
     println 'Not performing supplementary panel genotyping, since no panel specified'
   else
     SUPP_VARIANTS( SORT_BAM.out.cram )
+    SUPP_PICARD( SORT_BAM.out.cram )
   QUERY_HIPSTR( SPLIT_VCF.out.vcf )
   QUERY_EH( EXPANSION_HUNTER.out.vcf )
   QUERY_GANGSTR( GANGSTR.out.vcf )
@@ -596,6 +597,37 @@ process SUPP_VARIANTS {
   """
 }
 
+
+// Check hybrid capture quality
+
+process SUPP_PICARD {
+
+  time '4h'
+
+  memory '8 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load CRAM
+    tuple val( sampleID ), path( cram ), path( index )
+
+  output:
+    // save Picard CollectHsMetrics report
+    tuple val( sampleID ), path( "${sampleID}_picard_supp_panel.txt" )
+
+  script:
+  """
+  # run Picard CollectHsMetrics on supplementary panel coordinates
+  java -jar ${params.picard} CollectHsMetrics \\
+        I=${cram} \\
+        O=${sampleID}_picard_supp_panel.txt \\
+        R=${params.reference} \\
+        BAIT_INTERVALS=${params.supp_panel} \\
+        TARGET_INTERVALS=${params.supp_panel}
+        
+  """
+}
 
 
 /*
