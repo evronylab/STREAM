@@ -598,7 +598,7 @@ process SUPP_VARIANTS {
 }
 
 
-// Check hybrid capture quality
+// Check hybrid capture quality of supplementary panel
 
 process SUPP_PICARD {
 
@@ -614,7 +614,7 @@ process SUPP_PICARD {
 
   output:
     // save Picard CollectHsMetrics report
-    tuple val( sampleID ), path( "${sampleID}_picard_supp_panel.txt" )
+    tuple val( sampleID ), path( "${sampleID}_picard_supp_panel.txt" ), path( "${sampleID}_picard_supp_probes.txt" )
 
   script:
   """
@@ -623,8 +623,17 @@ process SUPP_PICARD {
         I=${cram} \\
         O=${sampleID}_picard_supp_panel.txt \\
         R=${params.reference} \\
-        BAIT_INTERVALS=${params.supp_panel} \\
+        BAIT_INTERVALS=${params.supp_probes} \\
         TARGET_INTERVALS=${params.supp_panel}
+        
+  # run Picard CollectHsMetrics on supplementary panel coordinates
+  # probes as targets
+  java -jar ${params.picard} CollectHsMetrics \\
+        I=${cram} \\
+        O=${sampleID}_picard_supp_probes.txt \\
+        R=${params.reference} \\
+        BAIT_INTERVALS=${params.supp_probes} \\
+        TARGET_INTERVALS=${params.supp_probes}
         
   """
 }
