@@ -137,8 +137,7 @@ if (sex == "M") {
   # fill in NA for any chrY calls to indicate it should not be considered a true call
   results <- results %>% 
     mutate(H_MALLREADS_1 = H_MALLREADS_1_TEMP, H_MALLREADS_2 = H_MALLREADS_2_TEMP,
-           H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
-    mutate(H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
+           H_ALLREADS_1 = H_ALLREADS_1_TEMP, H_ALLREADS_2 = H_ALLREADS_2_TEMP,
            H_GB_1 = H_GB_1_TEMP, H_GB_2 = H_GB_2_TEMP) %>%
     mutate(H_REPDIFF_1 = case_when(chr == "chrY" ~ NA, .default = H_GB_1/motifLength), 
            H_REPDIFF_2 = case_when(chr == "chrY" ~ NA, .default = H_GB_2/motifLength)) %>%

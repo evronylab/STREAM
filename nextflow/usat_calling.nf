@@ -37,11 +37,13 @@ workflow {
   EXPANSION_HUNTER( samples_ch.join(SORT_BAM.out.cram) )
   GANGSTR( samples_ch.join(SORT_BAM.out.cram) )
   BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
-  if( params.supp_panel == 'false')
+  if( params.supp_panel == 'false') {
     println 'Not performing supplementary panel genotyping, since no panel specified'
-  else
+  }
+  else {
     SUPP_VARIANTS( SORT_BAM.out.cram )
     SUPP_PICARD( SORT_BAM.out.cram )
+  }
   QUERY_HIPSTR( SPLIT_VCF.out.vcf )
   QUERY_EH( EXPANSION_HUNTER.out.vcf )
   QUERY_GANGSTR( GANGSTR.out.vcf )
@@ -123,7 +125,7 @@ process FASTQC {
 process ALIGN_BAM {
 
   time '30h'
-  cpus ${params.alignment_threads}
+  cpus 16
   memory '32 GB'
 
   input:
@@ -138,7 +140,7 @@ process ALIGN_BAM {
   """
   module load ${params.bwa}
 
-  bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t ${params.alignment_threads} ${params.reference} ${read1} ${read2} > ${sampleID}.bam
+  bwa mem -R "@RG\\tID:${sampleID}\\tSM:${sampleID}\\tLB:${sampleID}\\tPL:ILLUMINA" -t 16 ${params.reference} ${read1} ${read2} > ${sampleID}.bam
   
   """
 }
@@ -233,9 +235,9 @@ process SORT_BAM {
 
 process PICARD {
 
-  time '4h'
+  time '8h'
 
-  memory '8 GB'
+  memory '32 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
@@ -602,9 +604,9 @@ process SUPP_VARIANTS {
 
 process SUPP_PICARD {
 
-  time '4h'
+  time '8h'
 
-  memory '8 GB'
+  memory '32 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 

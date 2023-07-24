@@ -8,6 +8,7 @@
 
 library(dplyr)
 library(tidyr)
+library(stringr)
 library(configr)
 
 # load command line arguments
