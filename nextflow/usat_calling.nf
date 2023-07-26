@@ -1,4 +1,3 @@
-
 // enable DSL2 syntax
 nextflow.enable.dsl=2
 
@@ -10,10 +9,25 @@ nextflow.enable.dsl=2
 */
 
 // load sample metadata and FASTQ paths
-samples_ch =
-Channel
-  .fromPath( params.samples )
-  .splitCsv( sep: '\t' )
+if ( params.input_type == 'fastq' ) {
+  samples_ch =
+  Channel
+    .fromPath( params.samples )
+    .splitCsv( sep: '\t' )
+// load sample metadata and CRAM paths
+} else if (params.input_type == 'cram' ) {
+  Channel
+    .fromPath( params.samples )
+    .splitCsv( sep: '\t' )
+    .multiMap { it ->
+      all: it
+      cram: it[2]
+      index: it[3]
+    }
+    .set {samples_ch}
+} else {
+  println 'No input file type provided'
+}
 
 
 /*
@@ -24,32 +38,60 @@ Channel
 
 workflow {
 
-  CONCAT_FASTQ( samples_ch )
-  FASTQC( CONCAT_FASTQ.out.fastq )
-  ALIGN_BAM( CONCAT_FASTQ.out.fastq )
-  REMOVE_DUPS( ALIGN_BAM.out.bam )
-  SORT_BAM( REMOVE_DUPS.out.unmarked )
-  PICARD( SORT_BAM.out.cram )
-  SPLIT_REGIONS()
-  HIPSTR( SORT_BAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), SORT_BAM.out.index.collect() )
-  CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
-  SPLIT_VCF( samples_ch, CONCAT_VCF.out.joint_vcf )
-  EXPANSION_HUNTER( samples_ch.join(SORT_BAM.out.cram) )
-  GANGSTR( samples_ch.join(SORT_BAM.out.cram) )
-  BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
-  if( params.supp_panel == 'false') {
-    println 'Not performing supplementary panel genotyping, since no panel specified'
+  if( params.input_type == 'fastq' ) {
+    CONCAT_FASTQ( samples_ch )
+    FASTQC( CONCAT_FASTQ.out.fastq )
+    ALIGN_BAM( CONCAT_FASTQ.out.fastq )
+    REMOVE_DUPS( ALIGN_BAM.out.bam )
+    SORT_BAM( REMOVE_DUPS.out.unmarked )
+    PICARD( SORT_BAM.out.cram )
+    SPLIT_REGIONS()
+    HIPSTR( SORT_BAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), SORT_BAM.out.index.collect() )
+    CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
+    SPLIT_VCF( SORT_BAM.out.cram, CONCAT_VCF.out.joint_vcf )
+    EXPANSION_HUNTER( SORT_BAM.out.cram )
+    GANGSTR( SORT_BAM.out.cram )
+    BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
+    if( params.supp_panel == 'false') {
+      println 'Not performing supplementary panel genotyping, since no panel specified'
+    }
+    else {
+      SUPP_VARIANTS( SORT_BAM.out.cram )
+      SUPP_PICARD( SORT_BAM.out.cram )
+    }
+    QUERY_HIPSTR( SPLIT_VCF.out.vcf )
+    QUERY_EH( EXPANSION_HUNTER.out.vcf )
+    QUERY_GANGSTR( GANGSTR.out.vcf )
+    JOIN_CALLS( SORT_BAM.out.cram.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
+    JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )
   }
+  
+  else if ( params.input_type == 'cram' ) {
+    PICARD( samples_ch )
+    SPLIT_REGIONS()
+    HIPSTR( samples_ch.cram.toList(), SPLIT_REGIONS.out.usats.flatten(), samples_ch.index.collect() )
+    CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
+    SPLIT_VCF( samples_ch, CONCAT_VCF.out.joint_vcf )
+    EXPANSION_HUNTER( samples_ch )
+    GANGSTR( samples_ch )
+    BEDTOOLS_COVERAGE( samples_ch )
+    if( params.supp_panel == 'false') {
+      println 'Not performing supplementary panel genotyping, since no panel specified'
+    }
+    else {
+      SUPP_VARIANTS( samples_ch )
+      SUPP_PICARD( samples_ch )
+    }
+    QUERY_HIPSTR( SPLIT_VCF.out.vcf )
+    QUERY_EH( EXPANSION_HUNTER.out.vcf )
+    QUERY_GANGSTR( GANGSTR.out.vcf )
+    JOIN_CALLS( samples_ch.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
+    JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )  
+  }
+  
   else {
-    SUPP_VARIANTS( SORT_BAM.out.cram )
-    SUPP_PICARD( SORT_BAM.out.cram )
+    println 'Invalid input file type'
   }
-  QUERY_HIPSTR( SPLIT_VCF.out.vcf )
-  QUERY_EH( EXPANSION_HUNTER.out.vcf )
-  QUERY_GANGSTR( GANGSTR.out.vcf )
-  JOIN_CALLS( samples_ch.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
-  JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )
-
 }
 
 
@@ -134,7 +176,7 @@ process ALIGN_BAM {
 
   output:
     // output channel for most processes
-    tuple val ( sampleID ), path( "${sampleID}.bam" ), emit: bam
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.bam" ), val( trio ), emit: bam
 
   script:
   """
@@ -158,11 +200,11 @@ process REMOVE_DUPS {
 
   input:
     // load BAM file
-    tuple val( sampleID ), path( bam )
+    tuple val( sampleID ), val( sex ), path( bam ), val( trio )
 
   output:
     // output channel for most processes
-    tuple val ( sampleID ), path( "${sampleID}.unmarked.bam" ), emit: unmarked
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.unmarked.bam" ), val( trio ), emit: unmarked
     // save duplication metrics
     path( "${sampleID}.markdup.metrics.txt" )
 
@@ -203,11 +245,11 @@ process SORT_BAM {
 
   input:
     // load FASTQ files
-    tuple val( sampleID ), path( unmarked )
+    tuple val( sampleID ), val( sex ), path( unmarked ), val( trio )
 
   output:
     // output channel for most processes
-    tuple val ( sampleID ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), emit: cram
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), val( trio ), emit: cram
 
     // output channels for HipSTR
     // enables HipSTR joint calling
@@ -243,7 +285,7 @@ process PICARD {
 
   input:
     // load CRAM
-    tuple val( sampleID ), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // save Picard CollectHsMetrics report
@@ -406,7 +448,7 @@ process SPLIT_VCF {
 
   input:
     // load sample metadata
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
     // load combined HipSTR VCF
     tuple path( joint_vcf ), path( index )
@@ -441,7 +483,7 @@ process EXPANSION_HUNTER {
 
   input:
     // load sample metadata and CRAM
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // channel for Expansion Hunter VCFs
@@ -455,7 +497,7 @@ process EXPANSION_HUNTER {
   module load ${params.bcftools}
 
   # The JSON file from convert_to_EH.sh specifies the regions to be analyzed (called a "variant catalog" by EH)
-  # Must convert "M/F"" sex designation to "male/female" for Expansion Hunter
+  # Must convert "M/F" sex designation to "male/female" for Expansion Hunter
 
   # define sex variable to fit Expansion Hunter syntax
   if [ ${sex} == "M" ]
@@ -492,7 +534,7 @@ process GANGSTR {
 
   input:
     // load sample metadata and CRAM
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // channel for GangSTR VCFs
@@ -532,7 +574,7 @@ process BEDTOOLS_COVERAGE {
 
   input:
     // load CRAM
-    tuple val( sampleID ), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // channel for bedtools coverage file
@@ -569,7 +611,7 @@ process SUPP_VARIANTS {
 
   input:
     // load CRAM
-    tuple val( sampleID ), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // save variant calls
@@ -612,7 +654,7 @@ process SUPP_PICARD {
 
   input:
     // load CRAM
-    tuple val( sampleID ), path( cram ), path( index )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
 
   output:
     // save Picard CollectHsMetrics report
@@ -798,7 +840,7 @@ process JOIN_CALLS {
 
   input:
     // load data tables from HipSTR, Expansion Hunter, GangSTR, and bedtools
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), path( hipstr ), path( expansionhunter ), path( gangstr ), path( bedtools )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), path( hipstr ), path( expansionhunter ), path( gangstr ), path( bedtools )
 
   output:
     // channel for sample data frames
