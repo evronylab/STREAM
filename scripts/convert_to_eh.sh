@@ -9,7 +9,9 @@
 # row.number,seqnames,start,end,width,period.size,motif,motif.family
 
 # List of ExpansionHunter exclusion loci is a text file containing one locus name per line
-# Locus name is in the format MS-##### 
+# Locus name is in the format MS-#####
+# The number in each name corresponds to the locus's row number in the Shiny server
+# These loci cause ExpansionHunter to crash due to too many Ns in the flanks in the reference genome
 
 # Temp file is in the following tab-delimited format:
 # [LocusId] [LocusStructure] [ReferenceRegion] [VariantType]

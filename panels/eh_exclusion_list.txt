@@ -1,9 +1,3 @@
-
-List of microsatellite loci from the annotated database in the Shiny server that cause ExpansionHunter to crash due to too many Ns in the flanks in the reference genome.
-
-The number in each name corresponds to the locus's row number in the Shiny server.
-
-```{r}
 MS-58
 MS-5806
 MS-5807
@@ -539,5 +533,3 @@ MS-828611
 MS-829988
 MS-829989
 MS-829990
-```
-
