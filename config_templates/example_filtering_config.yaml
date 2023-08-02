@@ -3,65 +3,90 @@
 HipSTR:
   # all parameters are numbers
   nonA.min.qual: 0
-  nonA.min.mallreads: 0
-  nonA.min.allele.mallreads: 0
+  nonA.min.mallreads.typeA: 0
+  nonA.min.mallreads.typeB: 0
+  nonA.min.allele.mallreads.typeA: 0
+  nonA.min.allele.mallreads.typeB: 0
   nonA.min.mvaf: 0.2
-  nonA.min.allreads: 0
-  nonA.min.allele.allreads: 0
+  nonA.min.allreads.typeA: 0
+  nonA.min.allele.allreads.typeA: 0
+  nonA.min.allele.allreads.typeB: 0
   nonA.min.avaf: 0
   nonA.max.stutter.frac: 0.13
   nonA.max.flankindel.frac: 0.13
-  nonA.min.gldiff: 25
-  nonA.min.mean.mallreads: 0
-  nonA.min.mean.allreads: 0
+  nonA.min.gldiff.typeA: 25
+  nonA.min.gldiff.typeB: 25
+  nonA.min.mean.mallreads.typeA: 0
+  nonA.min.mean.mallreads.typeB: 0
+  nonA.min.mean.allreads.typeA: 0
+  nonA.min.mean.allreads.typeB: 0
   nonA.min.mean.qual: 0.95
   nonA.min.sample.frac: 0
   A.min.qual: 0
-  A.min.mallreads: 0
-  A.min.allele.mallreads: 0
+  A.min.mallreads.typeA: 0
+  A.min.mallreads.typeB: 0
+  A.min.allele.mallreads.typeA: 0
+  A.min.allele.mallreads.typeB: 0
   A.min.mvaf: 0.3
-  A.min.allreads: 0
-  A.min.allele.allreads: 0
+  A.min.allreads.typeA: 0
+  A.min.allreads.typeB: 0
+  A.min.allele.allreads.typeA: 0
+  A.min.allele.allreads.typeB: 0
   A.min.avaf: 0
   A.max.stutter.frac: 1
   A.max.flankindel.frac: 0.13
-  A.min.gldiff: 1
-  A.min.mean.mallreads: 0
-  A.min.mean.allreads: 0
+  A.min.gldiff.typeA: 1
+  A.min.gldiff.typeB: 1
+  A.min.mean.mallreads.typeA: 0
+  A.min.mean.mallreads.typeB: 0
+  A.min.mean.allreads.typeA: 0
+  A.min.mean.allreads.typeB: 0
   A.min.mean.qual: 0.85
   A.min.sample.frac: 0
 GangSTR:
   # all parameters are numbers
   nonA.min.qual: 0
-  nonA.min.total.reads: 0
-  nonA.min.allele.reads: 80
+  nonA.min.total.reads.typeA: 0
+  nonA.min.total.reads.typeB: 0
+  nonA.min.allele.reads.typeA: 80
+  nonA.min.allele.reads.typeB: 80
   nonA.min.vaf: 0
-  nonA.min.mean.total.reads: 0
+  nonA.min.mean.total.reads.typeA: 0
+  nonA.min.mean.total.reads.typeB: 0
   nonA.min.mean.qual: 1
   nonA.min.sample.frac: 0
   A.min.qual: 0
-  A.min.total.reads: 0
-  A.min.allele.reads: 15
+  A.min.total.reads.typeA: 0
+  A.min.total.reads.typeB: 0
+  A.min.allele.reads.typeA: 15
+  A.min.allele.reads.typeB: 0
   A.min.vaf: 0.4
-  A.min.mean.total.reads: 0
+  A.min.mean.total.reads.typeA: 0
+  A.min.mean.total.reads.typeB: 0
   A.min.mean.qual: 0.5
   A.min.sample.frac: 0
 EH:
   # all parameters are numbers
   # EH VAF may range above 1
-  nonA.min.total.reads: 0
-  nonA.min.allele.reads: 60
+  nonA.min.total.reads.typeA: 0
+  nonA.min.total.reads.typeB: 0
+  nonA.min.allele.reads.typeA: 60
+  nonA.min.allele.reads.typeB: 60
   nonA.min.vaf: 0.5
   nonA.max.vaf: 2.5
   nonA.min.lc: 0
-  nonA.min.mean.total.reads: 0
+  nonA.min.mean.total.reads.typeA: 0
+  nonA.min.mean.total.reads.typeB: 0
   nonA.min.sample.frac: 0
-  A.min.total.reads: 0
-  A.min.allele.reads: 0
+  A.min.total.reads.typeA: 0
+  A.min.total.reads.typeB: 0
+  A.min.allele.reads.typeA: 0
+  A.min.allele.reads.typeB: 0
   A.min.vaf: 0
   A.max.vaf: 999
   A.min.lc: 0
-  A.min.mean.total.reads: 0
+  A.min.mean.total.reads.typeA: 0
+  A.min.mean.total.reads.typeB: 0
   A.min.sample.frac: 0
 ensemble:
   # fill in "HipSTR", "GangSTR", "EH", or "no_caller"

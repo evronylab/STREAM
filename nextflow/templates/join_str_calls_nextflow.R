@@ -55,7 +55,7 @@ readdepth <- function(x) {sum(suppressWarnings(as.numeric(x))[seq(0, length(x), 
 # generate data frame containing all metadata and call information for the sample
 results <- 
   # add sample ID and trio ID as columns to the panel loci data frame
-  panel_loci %>% mutate(sampleID = sampleID) %>% mutate(sex = sex) %>% mutate(trio = trio) %>%
+  panel_loci %>% mutate(sampleID = sampleID, sex = sex, trio = trio, sampleType = sampleType) %>%
   # add column for motif length (since period size occasionally doesn't match)
   mutate(motifLength = nchar(motif.family)) %>%
   # left join caller and bedtools data files to panel loci data frame

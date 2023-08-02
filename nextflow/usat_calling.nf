@@ -110,11 +110,11 @@ process CONCAT_FASTQ {
 
   input:
     // load FASTQ files
-    tuple val( sampleID ), val( sex ), val( read1files ), val( read2files ), val( trio )
+    tuple val( sampleID ), val( sex ), val( read1files ), val( read2files ), val( trio ), val( sampleType )
 
   output:
     // output channel with concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.fastq.gz" ), path( "${sampleID}.R2.fastq.gz" ), val( trio ), emit: fastq
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.fastq.gz" ), path( "${sampleID}.R2.fastq.gz" ), val( trio ), val( sampleType ), emit: fastq
 
   script:
   """
@@ -141,7 +141,7 @@ process FASTQC {
 
   input:
     // load concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType )
 
   output:
     // save HTML reports
@@ -172,11 +172,11 @@ process ALIGN_BAM {
 
   input:
     // load concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio )
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType )
 
   output:
-    // output channel for most processes
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.bam" ), val( trio ), emit: bam
+    // output channel for REMOVE_DUPS
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.bam" ), val( trio ), val( sampleType ), emit: bam
 
   script:
   """
@@ -200,11 +200,11 @@ process REMOVE_DUPS {
 
   input:
     // load BAM file
-    tuple val( sampleID ), val( sex ), path( bam ), val( trio )
+    tuple val( sampleID ), val( sex ), path( bam ), val( trio ), val( sampleType )
 
   output:
-    // output channel for most processes
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.unmarked.bam" ), val( trio ), emit: unmarked
+    // output channel for SORT_BAM
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.unmarked.bam" ), val( trio ), val( sampleType ), emit: unmarked
     // save duplication metrics
     path( "${sampleID}.markdup.metrics.txt" )
 
@@ -245,11 +245,11 @@ process SORT_BAM {
 
   input:
     // load FASTQ files
-    tuple val( sampleID ), val( sex ), path( unmarked ), val( trio )
+    tuple val( sampleID ), val( sex ), path( unmarked ), val( trio ), val( sampleType )
 
   output:
     // output channel for most processes
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), val( trio ), emit: cram
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.cram" ), path( "${sampleID}.cram.crai" ), val( trio ), val( sampleType ), emit: cram
 
     // output channels for HipSTR
     // enables HipSTR joint calling
@@ -285,7 +285,7 @@ process PICARD {
 
   input:
     // load CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // save Picard CollectHsMetrics report
@@ -448,7 +448,7 @@ process SPLIT_VCF {
 
   input:
     // load sample metadata
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
     // load combined HipSTR VCF
     tuple path( joint_vcf ), path( index )
@@ -483,7 +483,7 @@ process EXPANSION_HUNTER {
 
   input:
     // load sample metadata and CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // channel for Expansion Hunter VCFs
@@ -534,7 +534,7 @@ process GANGSTR {
 
   input:
     // load sample metadata and CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // channel for GangSTR VCFs
@@ -574,7 +574,7 @@ process BEDTOOLS_COVERAGE {
 
   input:
     // load CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // channel for bedtools coverage file
@@ -611,7 +611,7 @@ process SUPP_VARIANTS {
 
   input:
     // load CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // save variant calls
@@ -654,7 +654,7 @@ process SUPP_PICARD {
 
   input:
     // load CRAM
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
     // save Picard CollectHsMetrics report
@@ -840,7 +840,7 @@ process JOIN_CALLS {
 
   input:
     // load data tables from HipSTR, Expansion Hunter, GangSTR, and bedtools
-    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), path( hipstr ), path( expansionhunter ), path( gangstr ), path( bedtools )
+    tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType ), path( hipstr ), path( expansionhunter ), path( gangstr ), path( bedtools )
 
   output:
     // channel for sample data frames
@@ -848,7 +848,7 @@ process JOIN_CALLS {
 
   script:
   """
-  Rscript ${params.script_path}/join_str_calls_nextflow.r ${params.panel} ${sampleID} ${sex} ${trio} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
+  Rscript ${params.script_path}/join_str_calls_nextflow.r ${params.panel} ${sampleID} ${sex} ${trio} ${sampleType} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
 
   """
 }
