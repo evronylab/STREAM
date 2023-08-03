@@ -36,15 +36,18 @@ sex <- args[3]
 # trio ID
 trio <- args[4]
 
+#sample type
+sampleType <- args[5]
+
 # load results table for each caller and bedtools
 # results table for HipSTR from QUERY_HIPSTR
-HipSTR <- read.delim(args[5])
+HipSTR <- read.delim(args[6])
 # results table for Expansion Hunter from QUERY_EH
-EH <- read.delim(args[6])
+EH <- read.delim(args[7])
 # results table for GangSTR from QUERY_GANGSTR
-GangSTR <- read.delim(args[7])
+GangSTR <- read.delim(args[8])
 # table of bedtools coverage from BEDTOOLS_COVERAGE
-bedtools <- read.delim(args[8])
+bedtools <- read.delim(args[9])
 
 
 # make function for obtaining total read depth from MALLREADS, ALLREADS, and ENCLREADS

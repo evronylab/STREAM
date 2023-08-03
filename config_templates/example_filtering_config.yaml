@@ -9,6 +9,7 @@ HipSTR:
   nonA.min.allele.mallreads.typeB: 0
   nonA.min.mvaf: 0.2
   nonA.min.allreads.typeA: 0
+  nonA.min.allreads.typeB: 0
   nonA.min.allele.allreads.typeA: 0
   nonA.min.allele.allreads.typeB: 0
   nonA.min.avaf: 0
@@ -59,7 +60,7 @@ GangSTR:
   A.min.total.reads.typeA: 0
   A.min.total.reads.typeB: 0
   A.min.allele.reads.typeA: 15
-  A.min.allele.reads.typeB: 0
+  A.min.allele.reads.typeB: 15
   A.min.vaf: 0.4
   A.min.mean.total.reads.typeA: 0
   A.min.mean.total.reads.typeB: 0
