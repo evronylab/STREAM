@@ -631,7 +631,7 @@ error_report_function <-
              mean_depth_E_pass = case_when(sampleType == "typeA" & mean_depth_E >= min.mean.total.reads.eh.typeA ~ T,
                                            sampleType == "typeB" & mean_depth_E >= min.mean.total.reads.eh.typeB ~ T,
                                            .default = F)) %>%
-      group_by(name, sampleType) %>% summarise(
+      group_by(name) %>% summarise(
         all_mean_mdepth_H_pass = all(mean_mdepth_H_pass == T, na.rm = T),
         all_mean_adepth_H_pass = all(mean_adepth_H_pass == T, na.rm = T),
         all_mean_depth_G_pass = all(mean_depth_G_pass == T, na.rm = T),
@@ -640,7 +640,7 @@ error_report_function <-
     
     # join to main table and fill in error column
     # remove extra columns when done
-    subset_data <- left_join(subset_data, mean_depth_failed_filters, by = c("name","sampleType")) %>%
+    subset_data <- left_join(subset_data, mean_depth_failed_filters, by = c("name")) %>%
       mutate(locus_failed_filters = if_else(all_mean_mdepth_H_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.mallreads.hipstr",";"))) %>%
       mutate(locus_failed_filters = if_else(all_mean_adepth_H_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.allreads.hipstr",";"))) %>%
       mutate(locus_failed_filters = if_else(all_mean_depth_G_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.gangstr",";"))) %>%
