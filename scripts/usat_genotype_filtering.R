@@ -498,11 +498,11 @@ error_report_function <-
            min.qual.hipstr, min.mallreads.hipstr.typeA, min.mallreads.hipstr.typeB, min.allreads.hipstr.typeA, min.allreads.hipstr.typeB,
            min.allele.mallreads.hipstr.typeA, min.allele.mallreads.hipstr.typeB, min.allele.allreads.hipstr.typeA, min.allele.allreads.hipstr.typeB, min.mvaf.hipstr, min.avaf.hipstr,
            max.stutter.frac.hipstr, max.flankindel.frac.hipstr, min.gldiff.hipstr.typeA, min.gldiff.hipstr.typeB,
-           min.mean.qual.hipstr, min.mean.mallreads.hipstr, min.mean.allreads.hipstr, min.sample.frac.hipstr,
+           min.mean.qual.hipstr, min.mean.mallreads.hipstr.typeA, min.mean.mallreads.hipstr.typeB, min.mean.allreads.hipstr.typeA, min.mean.allreads.hipstr.typeB, min.sample.frac.hipstr,
            min.qual.gangstr, min.total.reads.gangstr.typeA, min.total.reads.gangstr.typeB, min.allele.reads.gangstr.typeA, min.allele.reads.gangstr.typeB, min.vaf.gangstr,
-           min.mean.qual.gangstr, min.mean.total.reads.gangstr, min.sample.frac.gangstr,
+           min.mean.qual.gangstr, min.mean.total.reads.gangstr.typeA, min.mean.total.reads.gangstr.typeB, min.sample.frac.gangstr,
            min.total.reads.eh.typeA, min.total.reads.eh.typeB, min.allele.reads.eh.typeA, min.allele.reads.eh.typeB, min.vaf.eh, max.vaf.eh, min.lc.eh,
-           min.mean.total.reads.eh, min.sample.frac.eh) {
+           min.mean.total.reads.eh.typeA, min.mean.total.reads.eh.typeB, min.sample.frac.eh) {
     
     ## Sample-level filters
     
@@ -555,8 +555,8 @@ error_report_function <-
       mutate(sample_failed_filters = if_else(H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC),
                                              sample_failed_filters,
                                              str_c(sample_failed_filters,"max.flankindel.frac.hipstr",";"))) %>%
-      mutate(sample_failed_filters = case_when(sampleType = "typeA" & H_GLDIFF >= min.gldiff.hipstr.typeA | is.na(H_GLDIFF) ~ sample_failed_filters,
-                                               sampleType = "typeB" & H_GLDIFF >= min.gldiff.hipstr.typeB | is.na(H_GLDIFF) ~ sample_failed_filters,
+      mutate(sample_failed_filters = case_when(sampleType = "typeA" & (H_GLDIFF >= min.gldiff.hipstr.typeA | is.na(H_GLDIFF)) ~ sample_failed_filters,
+                                               sampleType = "typeB" & (H_GLDIFF >= min.gldiff.hipstr.typeB | is.na(H_GLDIFF)) ~ sample_failed_filters,
                                                .default = str_c(sample_failed_filters,"min.gldiff.hipstr",";"))) %>%
       mutate(sample_failed_filters = if_else(G_GT != "." & !is.na(G_GT),
                                              sample_failed_filters,str_c(sample_failed_filters,"no.gt.gangstr",";"))) %>%
