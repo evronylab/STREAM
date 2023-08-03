@@ -555,22 +555,22 @@ error_report_function <-
       mutate(sample_failed_filters = if_else(H_FLINDELFRAC <= max.flankindel.frac.hipstr & !is.na(H_FLINDELFRAC),
                                              sample_failed_filters,
                                              str_c(sample_failed_filters,"max.flankindel.frac.hipstr",";"))) %>%
-      mutate(sample_failed_filters = case_when(sampleType = "typeA" & (H_GLDIFF >= min.gldiff.hipstr.typeA | is.na(H_GLDIFF)) ~ sample_failed_filters,
-                                               sampleType = "typeB" & (H_GLDIFF >= min.gldiff.hipstr.typeB | is.na(H_GLDIFF)) ~ sample_failed_filters,
+      mutate(sample_failed_filters = case_when(sampleType == "typeA" & (H_GLDIFF >= min.gldiff.hipstr.typeA | is.na(H_GLDIFF)) ~ sample_failed_filters,
+                                               sampleType == "typeB" & (H_GLDIFF >= min.gldiff.hipstr.typeB | is.na(H_GLDIFF)) ~ sample_failed_filters,
                                                .default = str_c(sample_failed_filters,"min.gldiff.hipstr",";"))) %>%
       mutate(sample_failed_filters = if_else(G_GT != "." & !is.na(G_GT),
                                              sample_failed_filters,str_c(sample_failed_filters,"no.gt.gangstr",";"))) %>%
       mutate(sample_failed_filters = if_else(G_Q >= min.qual.gangstr & !is.na(G_Q),
                                              sample_failed_filters,str_c(sample_failed_filters,"min.qual.gangstr",";"))) %>%
-      mutate(sample_failed_filters = case_when(sampleType = "typeA" & G_ENCLREADS_SUM >= min.total.reads.gangstr.typeA & !is.na(G_ENCLREADS_SUM) ~ sample_failed_filters,
-                                               sampleType = "typeB" & G_ENCLREADS_SUM >= min.total.reads.gangstr.typeB & !is.na(G_ENCLREADS_SUM) ~ sample_failed_filters,
+      mutate(sample_failed_filters = case_when(sampleType == "typeA" & G_ENCLREADS_SUM >= min.total.reads.gangstr.typeA & !is.na(G_ENCLREADS_SUM) ~ sample_failed_filters,
+                                               sampleType == "typeB" & G_ENCLREADS_SUM >= min.total.reads.gangstr.typeB & !is.na(G_ENCLREADS_SUM) ~ sample_failed_filters,
                                                .default = str_c(sample_failed_filters,"min.total.reads.gangstr",";"))) %>%
-      mutate(sample_failed_filters = if_else(sampleType = "typeA" & G_ENCLREADS_1 >= min.allele.reads.gangstr.typeA & !is.na(G_ENCLREADS_1) ~ sample_failed_filters,
-                                             sampleType = "typeB" & G_ENCLREADS_1 >= min.allele.reads.gangstr.typeB & !is.na(G_ENCLREADS_1) ~ sample_failed_filters,
+      mutate(sample_failed_filters = if_else(sampleType == "typeA" & G_ENCLREADS_1 >= min.allele.reads.gangstr.typeA & !is.na(G_ENCLREADS_1) ~ sample_failed_filters,
+                                             sampleType == "typeB" & G_ENCLREADS_1 >= min.allele.reads.gangstr.typeB & !is.na(G_ENCLREADS_1) ~ sample_failed_filters,
                                              .default = str_c(sample_failed_filters,"min.allele.reads.gangstr_1",";"))) %>%
-      mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType = "typeA" &
+      mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType == "typeA" &
                                                G_ENCLREADS_2 >= min.allele.reads.gangstr.typeA & !is.na(G_ENCLREADS_2)  ~ sample_failed_filters,
-                                             ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType = "typeB" &
+                                             ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType == "typeB" &
                                                G_ENCLREADS_2 >= min.allele.reads.gangstr.typeB & !is.na(G_ENCLREADS_2)  ~ sample_failed_filters,
                                              .default = str_c(sample_failed_filters,"min.allele.reads.gangstr_2",";"))) %>%
       mutate(sample_failed_filters = if_else(G_VAF_1 >= min.vaf.gangstr & !is.na(G_VAF_1),
@@ -580,15 +580,15 @@ error_report_function <-
                                              sample_failed_filters,str_c(sample_failed_filters,"min.vaf.gangstr_2",";"))) %>%
       mutate(sample_failed_filters = if_else(E_GT != "." & !is.na(E_GT),
                                              sample_failed_filters,str_c(sample_failed_filters,"no.gt.eh",";"))) %>%
-      mutate(sample_failed_filters = if_else(sampleType = "typeA" & B_depth >= min.total.reads.eh.typeA & !is.na(B_depth) ~ sample_failed_filters,
-                                             sampleType = "typeB" & B_depth >= min.total.reads.eh.typeB & !is.na(B_depth) ~ sample_failed_filters,
+      mutate(sample_failed_filters = if_else(sampleType == "typeA" & B_depth >= min.total.reads.eh.typeA & !is.na(B_depth) ~ sample_failed_filters,
+                                             sampleType == "typeB" & B_depth >= min.total.reads.eh.typeB & !is.na(B_depth) ~ sample_failed_filters,
                                              .default = str_c(sample_failed_filters,"min.total.reads.eh",";"))) %>%
-      mutate(sample_failed_filters = if_else(sampleType = "typeA" & E_ADSP_1 >= min.allele.reads.eh.typeA & !is.na(E_ADSP_1) ~ sample_failed_filters,
-                                             sampleType = "typeB" & E_ADSP_1 >= min.allele.reads.eh.typeB & !is.na(E_ADSP_1) ~ sample_failed_filters,
+      mutate(sample_failed_filters = if_else(sampleType == "typeA" & E_ADSP_1 >= min.allele.reads.eh.typeA & !is.na(E_ADSP_1) ~ sample_failed_filters,
+                                             sampleType == "typeB" & E_ADSP_1 >= min.allele.reads.eh.typeB & !is.na(E_ADSP_1) ~ sample_failed_filters,
                                              .default = str_c(sample_failed_filters,"min.allele.reads.eh_1",";"))) %>%
-      mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType = "typeA" &
+      mutate(sample_failed_filters = if_else(((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType == "typeA" &
                                                E_ADSP_2 >= min.allele.reads.eh.typeA & !is.na(E_ADSP_2) ~ sample_failed_filters,
-                                             ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType = "typeB" &
+                                             ((sex == "M" & chr != "chrX" & chr != "chrY") | (sex == "F" & chr != "chrY")) & sampleType == "typeB" &
                                                E_ADSP_2 >= min.allele.reads.eh.typeB & !is.na(E_ADSP_2) ~ sample_failed_filters,
                                              .default = str_c(sample_failed_filters,"min.allele.reads.eh_2",";"))) %>%
       mutate(sample_failed_filters = if_else(E_VAF_1 >= min.vaf.eh & E_VAF_1 <= max.vaf.eh & !is.na(E_VAF_1),
@@ -609,18 +609,18 @@ error_report_function <-
                                             locus_failed_filters,str_c(locus_failed_filters,"min.mean.qual.hipstr",";"))) %>%
       mutate(locus_failed_filters = if_else(mean_qual_G >= min.mean.qual.gangstr & !is.na(mean_qual_G),
                                             locus_failed_filters,str_c(locus_failed_filters,"min.mean.qual.gangstr",";"))) %>%
-      mutate(locus_failed_filters = if_else(mean_mdepth_H >= min.mean.mallreads.hipstr,
-                                            locus_failed_filters,
-                                            str_c(locus_failed_filters,"min.mean.mallreads.hipstr",";"))) %>%
-      mutate(locus_failed_filters = if_else(mean_adepth_H >= min.mean.allreads.hipstr,
-                                            locus_failed_filters,
-                                            str_c(locus_failed_filters,"min.mean.allreads.hipstr",";"))) %>%
-      mutate(locus_failed_filters = if_else(mean_depth_G >= min.mean.total.reads.gangstr,
-                                            locus_failed_filters,
-                                            str_c(locus_failed_filters,"min.mean.total.reads.gangstr",";"))) %>%
-      mutate(locus_failed_filters = if_else(mean_depth_E >= min.mean.total.reads.eh,
-                                            locus_failed_filters,
-                                            str_c(locus_failed_filters,"min.mean.total.reads.eh",";"))) %>%
+      mutate(locus_failed_filters = case_when(sampleType == "typeA" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeA ~ locus_failed_filters,
+                                              sampleType == "typeB" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeB ~ locus_failed_filters,
+                                              .default = str_c(locus_failed_filters,"min.mean.mallreads.hipstr",";"))) %>%
+      mutate(locus_failed_filters = case_when(sampleType == "typeA" & mean_adepth_H >= min.mean.allreads.hipstr.typeA ~ locus_failed_filters,
+                                              sampleType == "typeB" & mean_adepth_H >= min.mean.allreads.hipstr.typeB ~ locus_failed_filters,
+                                              .default = str_c(locus_failed_filters,"min.mean.allreads.hipstr",";"))) %>%
+      mutate(locus_failed_filters = case_when(sampleType == "typeA" & mean_depth_G >= min.mean.total.reads.gangstr.typeA ~ locus_failed_filters,
+                                              sampleType == "typeB" & mean_depth_G >= min.mean.total.reads.gangstr.typeB ~ locus_failed_filters,
+                                              .default = str_c(locus_failed_filters,"min.mean.total.reads.gangstr",";"))) %>%
+      mutate(locus_failed_filters = case_when(sampleType == "typeA" & mean_depth_E >= min.mean.total.reads.eh.typeA ~ locus_failed_filters,
+                                              sampleType == "typeB" & mean_depth_E >= min.mean.total.reads.eh.typeB ~ locus_failed_filters,
+                                              .default = str_c(locus_failed_filters,"min.mean.total.reads.eh",";"))) %>%
       mutate(locus_failed_filters = if_else(sample_frac_filter_H == T,
                                             locus_failed_filters,str_c(locus_failed_filters,"min.sample.frac.hipstr",";"))) %>%
       mutate(locus_failed_filters = if_else(sample_frac_filter_G == T,

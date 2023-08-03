@@ -36,7 +36,7 @@ sex <- args[3]
 # trio ID
 trio <- args[4]
 
-#sample type
+#sample type (typeA or typeB)
 sampleType <- args[5]
 
 # load results table for each caller and bedtools

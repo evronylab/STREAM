@@ -1,5 +1,6 @@
 # quality scores, VAF, and sample fraction are all numbers between 0 and 1
 # read counts are any number
+# sampleType can be typeA or typeB
 HipSTR:
   # all parameters are numbers
   nonA.min.qual: 0
