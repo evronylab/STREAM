@@ -619,47 +619,34 @@ error_report_function <-
     # table for checking mean read depth filters
     # handles typeA and typeB failures
     mean_depth_failed_filters <- subset_data %>% 
-      mutate(mean_mdepth_H_pass_A = case_when(sampleType == "typeA" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeA ~ T,
-                                              sampleType == "typeB" ~ NA, .default = F),
-             mean_mdepth_H_pass_B = case_when(sampleType == "typeB" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeB ~ T,
-                                              sampleType == "typeA" ~ NA, .default = F),
-             mean_adepth_H_pass_A = case_when(sampleType == "typeA" & mean_adepth_H >= min.mean.allreads.hipstr.typeA ~ T,
-                                              sampleType == "typeB" ~ NA, .default = F),
-             mean_adepth_H_pass_B = case_when(sampleType == "typeB" & mean_adepth_H >= min.mean.allreads.hipstr.typeB ~ T,
-                                              sampleType == "typeA" ~ NA, .default = F),
-             mean_depth_G_pass_A = case_when(sampleType == "typeA" & mean_depth_G >= min.mean.total.reads.gangstr.typeA ~ T,
-                                             sampleType == "typeB" ~ NA, .default = F),
-             mean_depth_G_pass_B = case_when(sampleType == "typeB" & mean_depth_G >= min.mean.total.reads.gangstr.typeB ~ T,
-                                             sampleType == "typeA" ~ NA, .default = F),
-             mean_depth_E_pass_A = case_when(sampleType == "typeA" & mean_depth_E >= min.mean.total.reads.eh.typeA ~ T,
-                                             sampleType == "typeB" ~ NA, .default = F),
-             mean_depth_E_pass_B = case_when(sampleType == "typeB" & mean_depth_E >= min.mean.total.reads.eh.typeB ~ T,
-                                             sampleType == "typeA" ~ NA, .default = F)) %>%
-      group_by(name) %>% summarise(
-        all_mean_mdepth_H_pass_A = all(mean_mdepth_H_pass_A == T, na.rm = T),
-        all_mean_mdepth_H_pass_B = all(mean_mdepth_H_pass_B == T, na.rm = T),
-        all_mean_adepth_H_pass_A = all(mean_adepth_H_pass_A == T, na.rm = T),
-        all_mean_adepth_H_pass_B = all(mean_adepth_H_pass_B == T, na.rm = T),
-        all_mean_depth_G_pass_A = all(mean_depth_G_pass_A == T, na.rm = T),
-        all_mean_depth_G_pass_B = all(mean_depth_G_pass_B == T, na.rm = T),
-        all_mean_depth_E_pass_A = all(mean_depth_E_pass_A == T, na.rm = T),
-        all_mean_depth_E_pass_B = all(mean_depth_E_pass_B == T, na.rm = T)
+      mutate(mean_mdepth_H_pass = case_when(sampleType == "typeA" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeA ~ T,
+                                            sampleType == "typeB" & mean_mdepth_H >= min.mean.mallreads.hipstr.typeB ~ T,
+                                            .default = F),
+             mean_adepth_H_pass = case_when(sampleType == "typeA" & mean_adepth_H >= min.mean.allreads.hipstr.typeA ~ T,
+                                            sampleType == "typeB" & mean_adepth_H >= min.mean.allreads.hipstr.typeB ~ T,
+                                            .default = F),
+             mean_depth_G_pass = case_when(sampleType == "typeA" & mean_depth_G >= min.mean.total.reads.gangstr.typeA ~ T,
+                                           sampleType == "typeB" & mean_depth_G >= min.mean.total.reads.gangstr.typeB ~ T,
+                                           .default = F),
+             mean_depth_E_pass = case_when(sampleType == "typeA" & mean_depth_E >= min.mean.total.reads.eh.typeA ~ T,
+                                           sampleType == "typeB" & mean_depth_E >= min.mean.total.reads.eh.typeB ~ T,
+                                           .default = F)) %>%
+      group_by(name, sampleType) %>% summarise(
+        all_mean_mdepth_H_pass = all(mean_mdepth_H_pass == T, na.rm = T),
+        all_mean_adepth_H_pass = all(mean_adepth_H_pass == T, na.rm = T),
+        all_mean_depth_G_pass = all(mean_depth_G_pass == T, na.rm = T),
+        all_mean_depth_E_pass = all(mean_depth_E_pass == T, na.rm = T)
       )
     
     # join to main table and fill in error column
     # remove extra columns when done
-    subset_data <- left_join(subset_data, mean_depth_failed_filters, by = "name") %>%
-      mutate(locus_failed_filters = if_else(all_mean_mdepth_H_pass_A == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.mallreads.hipstr.typeA",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_mdepth_H_pass_B == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.mallreads.hipstr.typeB",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_adepth_H_pass_A == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.allreads.hipstr.typeA",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_adepth_H_pass_B == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.allreads.hipstr.typeB",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_depth_G_pass_A == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.gangstr.typeA",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_depth_G_pass_B == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.gangstr.typeB",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_depth_E_pass_A == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.eh.typeA",";"))) %>%
-      mutate(locus_failed_filters = if_else(all_mean_depth_E_pass_B == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.eh.typeB",";"))) %>%
+    subset_data <- left_join(subset_data, mean_depth_failed_filters, by = c("name","sampleType")) %>%
+      mutate(locus_failed_filters = if_else(all_mean_mdepth_H_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.mallreads.hipstr",";"))) %>%
+      mutate(locus_failed_filters = if_else(all_mean_adepth_H_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.allreads.hipstr",";"))) %>%
+      mutate(locus_failed_filters = if_else(all_mean_depth_G_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.gangstr",";"))) %>%
+      mutate(locus_failed_filters = if_else(all_mean_depth_E_pass == T, locus_failed_filters,str_c(locus_failed_filters,"min.mean.total.reads.eh",";"))) %>%
       
-      select(-c(all_mean_mdepth_H_pass_A,all_mean_mdepth_H_pass_B,all_mean_adepth_H_pass_A,all_mean_adepth_H_pass_B,
-                all_mean_depth_G_pass_A,all_mean_depth_G_pass_B,all_mean_depth_E_pass_A,all_mean_depth_E_pass_B))
+      select(-c(all_mean_mdepth_H_pass,all_mean_adepth_H_pass,all_mean_depth_G_pass,all_mean_depth_E_pass))
     
 
     return(subset_data)
