@@ -67,25 +67,25 @@ workflow {
   }
   
   else if ( params.input_type == 'cram' ) {
-    PICARD( samples_ch )
+    PICARD( samples_ch.all )
     SPLIT_REGIONS()
     HIPSTR( samples_ch.cram.toList(), SPLIT_REGIONS.out.usats.flatten(), samples_ch.index.collect() )
     CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
-    SPLIT_VCF( samples_ch, CONCAT_VCF.out.joint_vcf )
-    EXPANSION_HUNTER( samples_ch )
-    GANGSTR( samples_ch )
-    BEDTOOLS_COVERAGE( samples_ch )
+    SPLIT_VCF( samples_ch.all, CONCAT_VCF.out.joint_vcf )
+    EXPANSION_HUNTER( samples_ch.all )
+    GANGSTR( samples_ch.all )
+    BEDTOOLS_COVERAGE( samples_ch.all )
     if( params.supp_panel == 'false') {
       println 'Not performing supplementary panel genotyping, since no panel specified'
     }
     else {
-      SUPP_VARIANTS( samples_ch )
-      SUPP_PICARD( samples_ch )
+      SUPP_VARIANTS( samples_ch.all )
+      SUPP_PICARD( samples_ch.all )
     }
     QUERY_HIPSTR( SPLIT_VCF.out.vcf )
     QUERY_EH( EXPANSION_HUNTER.out.vcf )
     QUERY_GANGSTR( GANGSTR.out.vcf )
-    JOIN_CALLS( samples_ch.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
+    JOIN_CALLS( samples_ch.all.join(QUERY_HIPSTR.out.table).join(QUERY_EH.out.table).join(QUERY_GANGSTR.out.table).join(BEDTOOLS_COVERAGE.out.table) )
     JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )  
   }
   
@@ -110,11 +110,11 @@ process CONCAT_FASTQ {
 
   input:
     // load FASTQ files
-    tuple val( sampleID ), val( sex ), val( read1files ), val( read2files ), val( trio ), val( sampleType )
+    tuple val( sampleID ), val( sex ), val( read1files ), val( read2files ), val( trio ), val( sampleType ), val(opticalDistance)
 
   output:
     // output channel with concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.fastq.gz" ), path( "${sampleID}.R2.fastq.gz" ), val( trio ), val( sampleType ), emit: fastq
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.fastq.gz" ), path( "${sampleID}.R2.fastq.gz" ), val( trio ), val( sampleType ), val(opticalDistance), emit: fastq
 
   script:
   """
@@ -141,7 +141,7 @@ process FASTQC {
 
   input:
     // load concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType )
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType ), val(opticalDistance)
 
   output:
     // save HTML reports
@@ -172,11 +172,11 @@ process ALIGN_BAM {
 
   input:
     // load concatenated FASTQ files
-    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType )
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType ), val(opticalDistance)
 
   output:
     // output channel for REMOVE_DUPS
-    tuple val( sampleID ), val( sex ), path( "${sampleID}.bam" ), val( trio ), val( sampleType ), emit: bam
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.bam" ), val( trio ), val( sampleType ), val(opticalDistance), emit: bam
 
   script:
   """
@@ -200,7 +200,7 @@ process REMOVE_DUPS {
 
   input:
     // load BAM file
-    tuple val( sampleID ), val( sex ), path( bam ), val( trio ), val( sampleType )
+    tuple val( sampleID ), val( sex ), path( bam ), val( trio ), val( sampleType ), val(opticalDistance)
 
   output:
     // output channel for SORT_BAM
@@ -218,7 +218,7 @@ process REMOVE_DUPS {
     O=${sampleID}.markdup.bam \\
     REMOVE_DUPLICATES=false \\
     METRICS_FILE=${sampleID}.markdup.metrics.txt \\
-    OPTICAL_DUPLICATE_PIXEL_DISTANCE=2500 \\
+    OPTICAL_DUPLICATE_PIXEL_DISTANCE=${opticalDistance} \\
     ASSUME_SORT_ORDER=queryname \\
     CLEAR_DT=false \\
     REMOVE_SEQUENCING_DUPLICATES=true \\

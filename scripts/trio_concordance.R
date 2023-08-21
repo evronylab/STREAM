@@ -146,8 +146,8 @@ if (config$sample$sex.of.child == "M") {
 
 results <- left_join(results, select(trio,c(name,concordance)), by = c("name"))
 
-nonA_results_stats <- results %>% group_by(name, chr, period.size, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family != "A")
-A_results_stats <- results %>% group_by(name, chr, period.size, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family == "A")
+nonA_results_stats <- results %>% group_by(name, chr, motifLength, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family != "A")
+A_results_stats <- results %>% group_by(name, chr, motifLength, motif.family, caller, concordance) %>% summarise() %>% filter(motif.family == "A")
 
 # Calculate statistics for concordance and filtering data
 
