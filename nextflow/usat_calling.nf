@@ -285,6 +285,7 @@ process PICARD {
 
   input:
     // load CRAM
+    // CRAM should have duplicates removed
     tuple val( sampleID ), val( sex ), path( cram ), path( index ), val( trio ), val( sampleType )
 
   output:
