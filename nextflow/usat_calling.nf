@@ -222,7 +222,7 @@ process REMOVE_DUPS {
     ASSUME_SORT_ORDER=queryname \\
     CLEAR_DT=false \\
     REMOVE_SEQUENCING_DUPLICATES=true \\
-    READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9]+:[0-9]:\\([0-9]+\\):\\([0-9]+\\):\\([0-9]+\\).* \\
+    READ_NAME_REGEX=[a-zA-Z0-9]+:[0-9]+:[a-zA-Z0-9\-]+:[0-9]:\\([0-9]+\\):\\([0-9]+\\):\\([0-9]+\\).* \\
     TMP_DIR=${params.gatk_tmp}
     
   # Unmark duplicate reads
