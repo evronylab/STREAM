@@ -94,7 +94,7 @@ The user will also need to specify in the YAML an order of preference for the th
 If working with Mendelian trios, the sample IDs for the trio members can also be specified in the YAML file, along with the trio name listed in the sample TSV. The filtered RDS file can be used as the input for [trio_concordance.R](scripts/trio_concordance.R), which will output the Mendelian discordance rate and other relevant statistics.
 
 ## Outputs
-Note: [items in brackets] refer to parameters defined in the nextflow config file.
+Note: [items in brackets] refer to parameters defined in the Nextflow config file.
 
 ### PIPELINE
 In the main results directory:
