@@ -53,7 +53,7 @@ The Picard toolkit's CollectHsMetrics also requires the coordinates of the probe
 ### Pipeline configuration
 The pipeline can be started from either paired FASTQ or CRAM files. In the config file, [params.input_type] must be set to 'fastq' or 'cram' to specify your initial data format.
 
-If starting from FASTQ files, your samples must be listed in a TSV file with the following fields (see [example](LINK)):
+If starting from FASTQ files, your samples must be listed in a TSV file with the following fields (see [example](config_templates/trio_samples_fastq.tsv)):
 ```[sampleID] [sex] [read 1 FASTQ] [read 2 FASTQ] [trioID] [sampleType] [opticalDistance]```
 - [trioID]: character string specifying the name of the Mendelian trio to which the sample belongs
 - [sampleType]: distinguishes samples from each other by type (i.e., blood vs. skin, exome vs. whole genome) for filtering purposes. Can be "typeA" or "typeB".
@@ -61,7 +61,7 @@ If starting from FASTQ files, your samples must be listed in a TSV file with the
 
 Starting from CRAM files will cause the pipeline to skip all alignment processes, including removing optical duplicates and sorting. Therefore, any CRAM file used as input for PIPELINE should have optical duplicates removed and be coordinate-sorted.
 
-If starting from CRAM files, your samples must be listed in a TSV file with the following fields (see [example](LINK)):
+If starting from CRAM files, your samples must be listed in a TSV file with the following fields (see [example](config_templates/trio_samples_cram.tsv)):
  ```[sampleID] [sex] [CRAM] [CRAM index] [trioID] [sampleType]```
   
 ### External scripts
@@ -70,7 +70,7 @@ The processes JOIN_CALLS and JOIN_SAMPLES use the both call external R scripts. 
 ## Quality filtering
 PIPELINE outputs an R data frame containing genotype information from all three callers for each sample and locus (the data frame is stored as an RDS file). In order to generate a list of final genotypes, the raw data is passed through a script that filters the genotype calls on a variety of quality metrics, then chooses a caller whose genotypes will be used across all samples at each locus.
 
-The filtering script reads filtering threshold values from a YAML configuration file (see [example](LINK)), then checks if each row of the data frame passed these thresholds. There are sample-level filters, which are applied to each sample individually, and locus-level filters, which are evaluated across all samples. Filters related to read depth can have different values specified for sample type A vs B. 
+The filtering script reads filtering threshold values from a YAML configuration file (see [example](config_templates/example_filtering_config.yaml)), then checks if each row of the data frame passed these thresholds. There are sample-level filters, which are applied to each sample individually, and locus-level filters, which are evaluated across all samples. Filters related to read depth can have different values specified for sample type A vs B. 
 
 The user will also need to specify in the YAML an order of preference for the three genotype callers; this order determines which caller's genotypes will be used in a situation where the genotype calls from more than one caller pass the filtering thresholds. The second- and third-choice callers can be left blank if desired.
 
