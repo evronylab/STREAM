@@ -5,15 +5,15 @@ PIPELINE is a computational workflow for calling microsatellite genotypes from n
 The calling pipeline can start from either FASTQ or CRAM files. The pipeline also requires a list of microsatellite loci to analyze.
 
 ### Outline
-- [Computing environment] [#computing-environment]
-- [Formatting list of microsatellites] (#formatting-list-of-microsatellites)
-- [Running PIPELINE] (#running-pipeline)
- - [Script requirements] (#script-requirements)
- - [Pipeline configuration] (#pipeline-configuration)
- - [External scripts] (#external-scripts)
-- [Quality filtering] (#quality-filtering)
-- [Outputs] (#outputs)
-- [Citation] (#citation)
+- [Computing environment](#computing-environment)
+- [Formatting list of microsatellites](#formatting-list-of-microsatellites)
+- [Running PIPELINE](#running-pipeline)
+ - [Script requirements](#script-requirements)
+ - [Pipeline configuration](#pipeline-configuration)
+ - [External scripts](#external-scripts)
+- [Quality filtering](#quality-filtering)
+- [Outputs](#outputs)
+- [Citation](#citation)
 
 ## Computing environment
 The pipeline as presented in this manual is set up to be used on a SLURM computing cluster. However, the pipeline can be adapted to work with other job management services that Nextflow supports such as AWS, Azure, and Google Cloud. See the [Nextflow documentation] (https://www.nextflow.io/docs/latest/executor.html#) for more information.
