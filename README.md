@@ -8,9 +8,9 @@ The calling pipeline can start from either FASTQ or CRAM files. The pipeline als
 - [Computing environment](#computing-environment)
 - [Formatting list of microsatellites](#formatting-list-of-microsatellites)
 - [Running PIPELINE](#running-pipeline)
- - [Script requirements](#script-requirements)
- - [Pipeline configuration](#pipeline-configuration)
- - [External scripts](#external-scripts)
+ -- [Script requirements](#script-requirements)
+ -- [Pipeline configuration](#pipeline-configuration)
+ -- [External scripts](#external-scripts)
 - [Quality filtering](#quality-filtering)
 - [Outputs](#outputs)
 - [Citation](#citation)
@@ -25,13 +25,13 @@ Several tools in PIPELINE require a list of microsatellites to analyze. Each too
 The Picard toolkit's CollectHsMetrics also requires the coordinates of the probes used to capture the targeted microsatellites. The list of probes must be in tab-separated format with the following fields: ```[chr] [start coordinate] [end coordinate] [name]```. Coordinates must be 1-start, fully closed.
 
 1. Download CSV list of targeted microsatellites from APP with the following fields: row.number,seqnames,start,end,width,period.size,motif,motif.family
-  - The row.number field is used to give unique names to the microsatellites in the list. It can be modified to contain an additional string (i.e., adding "MS-" in front of the row number) or replaced with an your preferred naming system.
+  -- The row.number field is used to give unique names to the microsatellites in the list. It can be modified to contain an additional string (i.e., adding "MS-" in front of the row number) or replaced with an your preferred naming system.
 2. Run the following scripts:
- - [convert_to_hipstr.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_hipstr.sh)
- - [convert_to_gangstr.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_gangstr.sh)
- - [convert_to_eh.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_eh.sh)
- - [convert_to_bed.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_bed.sh)
- - [convert_to_interval_list.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_interval_list.sh)
+ -- [convert_to_hipstr.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_hipstr.sh)
+ -- [convert_to_gangstr.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_gangstr.sh)
+ -- [convert_to_eh.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_eh.sh)
+ -- [convert_to_bed.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_bed.sh)
+ -- [convert_to_interval_list.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/convert_to_interval_list.sh)
 3. If there is a supplementary capture panel, run [supplementary_panel_to_interval_list.sh] (https://github.com/evronylab/microsatellite_calling/blob/main/scripts/supplementary_panel_to_interval_list.sh)
  - The supplementary panel file must be a TSV file with fields: ```[chr] [start coordinate] [end coordinate]```. Coordinates must be 0-based, half-open.
 
