@@ -36,7 +36,7 @@ The following tools must be available. The paths to them is then specified in th
 - [R](https://cran.r-project.org/bin/windows/base/)
 - R packages: **
 
-## Required input files
+## Input files
 ### A. Sequencing data
 PIPELINE can begin from either FASTQ or CRAM files.
 
@@ -83,10 +83,13 @@ To prepare the microsatellite list files for PIPELINE, perform the following ste
    - [convert_to_bed.sh](scripts/convert_to_bed.sh)
    - [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh)
 
-### D. Optional: List of probes used in hybridization capture
+### D. List of loci to exclude from ExpansionHunter analysis
+**Fully explain reason for this, including how the IDs relate to above.
+
+### E. Optional: List of probes used in hybridization capture
 If the microsatellites were profiled by hybridization capture, the Picard CollectHsMetrics tool for calculating capture performance metrics requires the coordinates of the capture probes in a tab-separated file with the fields: `[chr] [start coordinate] [end coordinate] [name]`. Coordinates must be 1-start, fully closed. [name] is **.
 
-### E. Optional: List of supplementary non-microsatellite loci
+### F. Optional: List of supplementary non-microsatellite loci
 If an additional hybridization capture panel was multiplexed with the microsatellite panel to capture non-microsatellite loci (i.e., a supplementary capture panel), prepare a tab-separated file with the fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open.
 
 Then run [supplementary_panel_to_interval_list.sh](scripts/supplementary_panel_to_interval_list.sh)
