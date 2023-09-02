@@ -1,13 +1,11 @@
 # microsatellite_calling
 
-PIPELINE is a computational workflow for calling microsatellite genotypes from next-generation sequencing data using three callers: HipSTR, GangSTR, and ExpansionHunter. This repository contains the calling pipeline, quality filtering scripts, and instructions for creating the input files required by each caller.
+PIPELINE is a computational workflow for ensemble genotyping of microsatellites from next-generation sequencing data using three callers: HipSTR, GangSTR, and ExpansionHunter. This repository contains instructions for creating the required input files, the genotype calling pipeline, and quality filtering scripts.
 
-The calling pipeline can start from either FASTQ or CRAM files. The pipeline also requires a list of microsatellite loci to analyze.
-
-The basic steps to go from sequencing data to filtered genotype calls are:
+The basic steps of PIPELINE from sequencing data to filtered genotype calls are:
 1. Format list of microsatellites to be used as input for the various tools in PIPELINE
-2. Run PIPELINE to get unfiltered genotypes from all callers
-3. Filter PIPELINE output to pick final genotypes for each locus
+2. Analyze the sequencing data to obtain unfiltered genotypes from all callers
+3. Filter the output and pick final genotypes for each locus
 
 ### Outline
 - [Computing environment](#computing-environment)
@@ -21,34 +19,10 @@ The basic steps to go from sequencing data to filtered genotype calls are:
 - [Citation](#citation)
 
 ## Computing environment
-The pipeline as presented in this manual is set up to be used on a SLURM computing cluster. However, the pipeline can be adapted to work with other job management services that Nextflow supports such as AWS, Azure, and Google Cloud. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/executor.html#) for more information.
+The pipeline runs via **Nextflow [link]** and in this manual is set up to be used on a SLURM computing cluster. However, the pipeline can be adapted to work with other job management services that Nextflow supports such as AWS, Azure, and Google Cloud. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/executor.html#) for more information.
 
-## Formatting list of microsatellites
-
-Several tools in PIPELINE require a list of microsatellites to analyze. Each tool requires the list in a specific format. Here we provide [scripts](scripts) for converting a CSV file obtained from [APP](https://github.com/evronylab/usatShinyApp) into the formats required for the pipeline. The input files must be generated prior to running PIPELINE.
-
-The Picard toolkit's CollectHsMetrics also requires the coordinates of the probes used to capture the targeted microsatellites. The list of probes must be in tab-separated format with the following fields: `[chr] [start coordinate] [end coordinate] [name]`. Coordinates must be 1-start, fully closed.
-
-To prepare the microsatellite list files for PIPELINE:
-1. Download CSV list of targeted microsatellites from APP with the following fields: row.number,seqnames,start,end,width,period.size,motif,motif.family
-   - The row.number field is used to give unique names to the microsatellites in the list. It can be modified to contain an additional string (i.e., adding "MS-" in front of the row number) or replaced with an your preferred naming system.
-2. Run the following scripts:
-   - [convert_to_hipstr.sh](scripts/convert_to_hipstr.sh)
-   - [convert_to_gangstr.sh](scripts/convert_to_gangstr.sh)
-   - [convert_to_eh.sh](scripts/convert_to_eh.sh)
-   - [convert_to_bed.sh](scripts/convert_to_bed.sh)
-   - [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh)
-3. If there is a supplementary capture panel, run [supplementary_panel_to_interval_list.sh](scripts/supplementary_panel_to_interval_list.sh)
-   - The supplementary panel file must be a TSV file with fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open.
-
-## Running PIPELINE
-
-PIPELINE can be run with the following command:
-```nextflow -C nextflow.config run usat_calling.nf```
-
-The next sections describe the setup required prior to running PIPELINE.
-
-### Script requirements
+## Required tools
+The following tools must be available. The paths to them is then specified in the Nextflow configuration file.
 - [fastqc](https://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc)
 - [bwa](https://github.com/lh3/bwa)
 - [samtools](http://www.htslib.org/download/)
@@ -60,43 +34,99 @@ The next sections describe the setup required prior to running PIPELINE.
 - [bedtools](https://github.com/arq5x/bedtools2/releases/tag/v2.31.0)
 - [bcftools](http://www.htslib.org/download/)
 - [R](https://cran.r-project.org/bin/windows/base/)
+- R packages: **
 
-### Pipeline configuration
-The pipeline is configured with a nextflow.config file specifying all file paths, packages, and parameters (see [example](nextflow/nextflow.config)). The samples to be run in the pipeline are specified in a TSV file whose path is specified by [params.samples] in the config file.
+## Required input files
+### A. Sequencing data
+PIPELINE can begin from either FASTQ or CRAM files.
 
-#### Samples list
+FASTQ files must be **requirements**.
 
-The pipeline can be started from either paired FASTQ files or a CRAM file. In the config file, [params.input_type] must be set to 'fastq' or 'cram' to specify your initial data format.
+CRAM files must be **requirements**.
 
-If starting from FASTQ files, your samples must be listed in a TSV file with the following fields (see [example](config_templates/trio_samples_fastq.tsv)):
+It also requires a list of microsatellite loci to analyze, which can be obtained using **APP**--our tool for microsatellite panel design. **When the data is obtained via hybridization capture, PIPLINE can also be given a list of capture probes to calculate hybridization capture performance metrics.**
+
+### B. Samples list
+If starting from FASTQ files, prepare a tab-separated file with the following fields (see [example](config_templates/trio_samples_fastq.tsv)):
 ```[sampleID] [sex] [read 1 FASTQ] [read 2 FASTQ] [trioID] [sampleType] [opticalDistance]```
+- [sampleID]: **
+- [sex]: **
+- [read 1/2 FASTQ]: **
 - [trioID]: character string specifying the name of the Mendelian trio to which the sample belongs
 - [sampleType]: distinguishes samples from each other by type (i.e., blood vs. skin, exome vs. whole genome) for filtering purposes. Can be "typeA" or "typeB".
 - [opticalDistance]: preferred setting for Picard MarkDuplicates option OPTICAL_DUPLICATE_PIXEL_DISTANCE, which depends on the sequencer used to generate the data.
 
-Starting from CRAM files will cause the pipeline to skip all alignment processes, including removing optical duplicates and sorting. Therefore, any CRAM file used as input for PIPELINE should have optical duplicates removed and be coordinate-sorted.
-
-If starting from CRAM files, your samples must be listed in a TSV file with the following fields (see [example](config_templates/trio_samples_cram.tsv)):
+If starting from CRAM files, prepare a tab-separated file with the following fields (see [example](config_templates/trio_samples_cram.tsv)):
  ```[sampleID] [sex] [CRAM] [CRAM index] [trioID] [sampleType]```
-  
-### External scripts
-The processes JOIN_CALLS and JOIN_SAMPLES use the both call external R scripts. The location of these scripts must be specified in the config file as [params.script_path].
+ - [sampleID], [sex], [trioID], [sampleType]: per above
+ - [CRAM / CRAM index]: full path to the CRAM file and its index. The CRAM file must have optical duplicates removed (i.e. removed, not just marked) and be coordinate-sorted.
 
-## Quality filtering
-PIPELINE outputs an R data frame containing genotype information from all three callers for each sample and locus (the data frame is stored as an RDS file). In order to generate a list of final genotypes, the raw data is passed through a script that filters the genotype calls on a variety of quality metrics, then chooses a caller whose genotypes will be used across all samples at each locus.
+When given CRAM files as an input, **PIPELINE** skips all alignment steps, including optical duplicate removal and sorting. 
 
-The filtering script reads filtering threshold values from a YAML configuration file (see [example](config_templates/example_filtering_config.yaml)), then checks if each row of the data frame passed these thresholds. There are sample-level filters, which are applied to each sample individually, and locus-level filters, which are evaluated across all samples. Filters related to read depth can have different values specified for sample type A vs B. 
+### C. Formatted lists of microsatellites to analyze
+Several tools in PIPELINE require a list of microsatellites to analyze. Each tool requires the list in a specific format. We provide [scripts](scripts) for converting a CSV file obtained from [APP](https://github.com/evronylab/usatShinyApp) into the formats required for the pipeline.
 
-The user will also need to specify in the YAML an order of preference for the three genotype callers; this order determines which caller's genotypes will be used in a situation where the genotype calls from more than one caller pass the filtering thresholds. The second- and third-choice callers can be left blank if desired.
+To prepare the microsatellite list files for PIPELINE, perform the following steps:
+1. Prepare a comma-separate file with the fields: row.number,seqnames,start,end,width,period.size,motif,motif.family. When using our **APP [link]** to design a panel of microsatellites for profiling, this can be downloaded via **APP**'s **panel**.
+   - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
+   - seqnames:
+   - start/end:
+   - width:
+   - period.size: 
+   - motif:
+   - motif.family: 
 
-### Mendelian concordance
+3. Run the following scripts in order:
+   - [convert_to_hipstr.sh](scripts/convert_to_hipstr.sh)
+   - [convert_to_gangstr.sh](scripts/convert_to_gangstr.sh)
+   - [convert_to_eh.sh](scripts/convert_to_eh.sh)
+   - [convert_to_bed.sh](scripts/convert_to_bed.sh)
+   - [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh)
 
-If working with Mendelian trios, the sample IDs for the trio members can also be specified in the YAML file, along with the trio name listed in the sample TSV. The filtered RDS file can be used as the input for [trio_concordance.R](scripts/trio_concordance.R), which will output the Mendelian discordance rate and other relevant statistics.
+### D. Optional: List of probes used in hybridization capture
+If the microsatellites were profiled by hybridization capture, the Picard CollectHsMetrics tool for calculating capture performance metrics requires the coordinates of the capture probes in a tab-separated file with the fields: `[chr] [start coordinate] [end coordinate] [name]`. Coordinates must be 1-start, fully closed. [name] is **.
+
+### E. Optional: List of supplementary non-microsatellite loci
+If an additional hybridization capture panel was multiplexed with the microsatellite panel to capture non-microsatellite loci (i.e., a supplementary capture panel), prepare a tab-separated file with the fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open.
+
+Then run [supplementary_panel_to_interval_list.sh](scripts/supplementary_panel_to_interval_list.sh)
+
+## Pipeline configuration
+The pipeline is configured with two files:
+
+### A. Nextflow configuration file
+A Nextflow configuration file (see [example](nextflow/nextflow.config)) specifying:
+- Paths to tools and scripts
+- The input type (params.input_type = 'fastq' or 'cram')
+- The 'Samples list' file (params.samples)
+- Output path and file names
+- Other runtime parameters
+
+### B. Filtering configuration file
+The filtering step reads filtering threshold values from a YAML configuration file (see [example](config_templates/example_filtering_config.yaml)). This configuration file includes:
+- Sample-level filters, which are applied to each sample individually
+- Locus-level filters, which are evaluated across all samples.
+- An order of preference for the three genotype callers. This order determines which caller's genotypes will be used in a situation where the genotype calls from more than one caller pass the filtering thresholds. The second- and third-choice callers can be left blank if desired.
+
+Note: filters related to read depth can have different values specified for sample type A vs B, which can be useful when combining different types of samples such as bulk and capture or exome and genome.
+
+## Running PIPELINE
+
+### A. Genotype calling
+The genotype calling step is run with the following command:
+```nextflow -C nextflow.config run usat_calling.nf```
+
+### B. Filtering
+The genotype calling step outputs an R data frame (RDS file) containing genotype information from all three callers for each sample and locus. The filtering step generates final genotypes by filtering genotype calls on a variety of parameter thresholds and then chooses a caller for each locus whose genotypes are used across all samples at that locus.
+
+### C. Optional: Mendelian discordance
+When profiling Mendelian trios (father, mother, child), the filtered RDS file can be analyzed by the[trio_concordance.R](scripts/trio_concordance.R) script to output the Mendelian discordance rate and other relevant statistics. This step is run with the following command:
+**
 
 ## Outputs
-Note: [items in brackets] refer to parameters defined in the Nextflow config file.
+Note: [items in brackets] refer to parameters defined in the Nextflow configuration file.
 
-### PIPELINE
+### A. Genotype calling
 In the main results directory:
 1. [output.basename].rds: R data frame containing genotype information from all three callers for each sample and locus.
 2. [output.basename]_hipstr.vcf.gz and [output.basename]_hipstr.vcf.gz.csi: output VCF from HipSTR with all samples
@@ -114,13 +144,14 @@ In the sample-specific results directory:
 8. [sampleID].GATK.g.vcf.gz: output of GATK HaplotypeCaller for supplementary panel
 9. [sampleID].GATK.vcf.gz: output of GATK GenotypeGVCFs for supplementary panel
 
-### FILTERING
+### B. Filtering
 1. [output.basename]_genotypes.rds: same data frame as [output.basename].rds with additional columns indicating if the call passed filtering, which filters failed (if any), the caller whose genotypes were used, and the final chosen genotype call.
 2. [output.basename]_genotypes_[trioID]_genotypes_concordance.rds: same data frame as [output.basename]_genotypes.rds with additional columns indicating if the call follows patterns of Mendelian inheritance. Only the samples from the analyzed trio are present in this data frame.
 3. [output.basename]_genotypes_[trioID]_genotypes_concordance_stats.tsv: text file listing genotyping and Mendelian concordance statistics for the analyzed trio.
 
+### C. Mendelian discordance
+
 ## Citation
 If you use PIPELINE, please cite:
 
-Loh CA, Shields DA, Schwing A, Truong TK, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv 2023.month.day.#####; doi: LINK (2023).
-
+Loh CA, Shields DA, Schwing A, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv 2023.month.day.#####; doi: LINK (2023).
