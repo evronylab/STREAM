@@ -9,13 +9,13 @@ nextflow.enable.dsl=2
 */
 
 // load sample metadata and FASTQ paths
-if ( params.input_type == 'fastq' ) {
+if( params.input_type == 'fastq' ) {
   samples_ch =
   Channel
     .fromPath( params.samples )
     .splitCsv( sep: '\t' )
 // load sample metadata and CRAM paths
-} else if (params.input_type == 'cram' ) {
+} else if( params.input_type == 'cram' ) {
   Channel
     .fromPath( params.samples )
     .splitCsv( sep: '\t' )
@@ -160,6 +160,8 @@ process FASTQC {
   output:
     // save HTML reports
     tuple val( sampleID ), path("*_fastqc.html")
+    // save sample TSV to results directory
+    path( "${params.samples}" )
 
 
   script:

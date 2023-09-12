@@ -48,7 +48,7 @@ FASTQ files must be paired and have read names that follow the regular expressio
 
 CRAM files must be coordinate-sorted with optical duplicates removed. Duplicate marking should also be removed before using in the pipeline.
 
-It also requires a list of microsatellite loci to analyze, which can be obtained using [APP](http://35.209.154.155:3838/usatshiny/) -- our tool for microsatellite panel design. When the data is obtained via hybridization capture, PIPLINE can also be given a list of capture probes to calculate hybridization capture performance metrics. If the data was not obtained with hybridization capture, the microsatellite coordinates can be provided in place of probe coordinates.
+It also requires a list of microsatellite loci to analyze, which can be obtained using [STRATIFY](http://35.209.154.155:3838/usatshiny/) -- our tool for microsatellite panel design. When the data is obtained via hybridization capture, PIPLINE can also be given a list of capture probes to calculate hybridization capture performance metrics. If the data was not obtained with hybridization capture, the microsatellite coordinates can be provided in place of probe coordinates.
 
 ### B. Samples list
 If starting from FASTQ files, prepare a tab-separated file with the following fields (see [example](config_templates/trio_samples_fastq.tsv)):
@@ -68,10 +68,10 @@ If starting from CRAM files, prepare a tab-separated file with the following fie
 When given CRAM files as an input, **STREAM** skips all alignment steps, including optical duplicate removal and sorting. 
 
 ### C. Formatted lists of microsatellites to analyze
-Several tools in STREAM require a list of microsatellites to analyze. Each tool requires the list in a specific format. We provide [scripts](scripts) for converting a CSV file obtained from [APP](https://github.com/evronylab/usatShinyApp) into the formats required for the pipeline.
+Several tools in STREAM require a list of microsatellites to analyze. Each tool requires the list in a specific format. We provide [scripts](scripts) for converting a CSV file obtained from [STRATIFY](https://github.com/evronylab/usatShinyApp) into the formats required for the pipeline.
 
 To prepare the microsatellite list files for STREAM, perform the following steps:
-1. Prepare a comma-separate file with the fields: row.number,seqnames,start,end,width,period.size,motif,motif.family. When using our [APP](http://35.209.154.155:3838/usatshiny/) to design a panel of microsatellites for profiling, this can be downloaded via [APP's](http://35.209.154.155:3838/usatshiny/) "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the formatting scripts.
+1. Prepare a comma-separate file with the fields: row.number,seqnames,start,end,width,period.size,motif,motif.family. When using our [STRATIFY](http://35.209.154.155:3838/usatshiny/) to design a panel of microsatellites for profiling, this can be downloaded via [STRATIFY's](http://35.209.154.155:3838/usatshiny/) "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the formatting scripts.
    - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
    - seqnames: The chromosome on which the microsatellite is located.
    - start/end: The coordinates of the first and last bases in the microsatellite. Coordinates are 1-start, fully closed.
@@ -92,11 +92,11 @@ To prepare the microsatellite list files for STREAM, perform the following steps
      ```convert_to_bed.sh [Panel CSV] [full path to bedtools input file]```
    - [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh)
      ```convert_to_interval_list.sh [Targets/probes TSV] [output file basename] [Reference genome dictionary file]```
-     - convert_to_interval_list.sh requires a tab-separated file with format `[chr] [start coordinate] [end coordinate]` as input. The coordinates must be 0-start, half-open. Make sure to convert any panel CSVs or probe lists to the proper format before running. The CSV from **APP** can be converted with the following code:
+     - convert_to_interval_list.sh requires a tab-separated file with format `[chr] [start coordinate] [end coordinate]` as input. The coordinates must be 0-start, half-open. Make sure to convert any panel CSVs or probe lists to the proper format before running. The CSV from **STRATIFY** can be converted with the following code:
        ```awk -F',' -e '{print $2"\t"($3-1)"\t"$4}' panel.csv > reformatted_panel.txt```
 
 ### D. List of loci to exclude from ExpansionHunter analysis
-ExpansionHunter does not process loci with too many Ns in the flanking regions. When this happens, ExpansionHunter stops running instead of skipping the locus. Therefore, we have created a [list](panels/eh_exclusion_list.txt) of loci to exclude from the ExpansionHunter analysis to avoid the analysis ending prematurely. The IDs in the list correspond to the row.number field of the panel CSV when downloaded from [APP](http://35.209.154.155:3838/usatshiny/), with the string "MS-" appended as a prefix.
+ExpansionHunter does not process loci with too many Ns in the flanking regions. When this happens, ExpansionHunter stops running instead of skipping the locus. Therefore, we have created a [list](panels/eh_exclusion_list.txt) of loci to exclude from the ExpansionHunter analysis to avoid the analysis ending prematurely. The IDs in the list correspond to the row.number field of the panel CSV when downloaded from [STRATIFY](http://35.209.154.155:3838/usatshiny/), with the string "MS-" appended as a prefix.
 
 ### E. Optional: List of probes used in hybridization capture
 If the microsatellites were profiled by hybridization capture, the Picard CollectHsMetrics tool for calculating capture performance metrics requires the coordinates of the capture probes. Prepare a tab-separated file with the fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open.
