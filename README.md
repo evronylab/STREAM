@@ -65,7 +65,7 @@ If starting from CRAM files, prepare a tab-separated file with the following fie
  - [sampleID], [sex], [trioID], [sampleType]: Per above
  - [CRAM / CRAM index]: Full path to the CRAM file and its index. The CRAM file must have optical duplicates removed (i.e. removed, not just marked) and be coordinate-sorted.
 
-When given CRAM files as an input, **STREAM** skips all alignment steps, including optical duplicate removal and sorting. 
+When given CRAM files as an input, STREAM skips all alignment steps, including optical duplicate removal and sorting. 
 
 ### C. Formatted lists of microsatellites to analyze
 Several tools in STREAM require a list of microsatellites to analyze. Each tool requires the list in a specific format. We provide [scripts](scripts) for converting a CSV file obtained from [STRATIFY](https://github.com/evronylab/usatShinyApp) into the formats required for the pipeline.
@@ -92,7 +92,7 @@ To prepare the microsatellite list files for STREAM, perform the following steps
      ```convert_to_bed.sh [Panel CSV] [full path to bedtools input file]```
    - [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh)
      ```convert_to_interval_list.sh [Targets/probes TSV] [output file basename] [Reference genome dictionary file]```
-     - convert_to_interval_list.sh requires a tab-separated file with format `[chr] [start coordinate] [end coordinate]` as input. The coordinates must be 0-start, half-open. Make sure to convert any panel CSVs or probe lists to the proper format before running. The CSV from **STRATIFY** can be converted with the following code:
+     - convert_to_interval_list.sh requires a tab-separated file with format `[chr] [start coordinate] [end coordinate]` as input. The coordinates must be 0-start, half-open. Make sure to convert any panel CSVs or probe lists to the proper format before running. The CSV from STRATIFY can be converted with the following code:
        ```awk -F',' -e '{print $2"\t"($3-1)"\t"$4}' panel.csv > reformatted_panel.txt```
 
 ### D. List of loci to exclude from ExpansionHunter analysis
@@ -137,7 +137,7 @@ The genotype calling step is run with the following command:
 The genotype calling step outputs an R data frame (RDS file) containing genotype information from all three callers for each sample and locus. The filtering step generates final genotypes by filtering genotype calls on a variety of parameter thresholds and then chooses a caller for each locus whose genotypes are used across all samples at that locus.
 
 ### C. Optional: Mendelian discordance
-When profiling Mendelian trios (father, mother, child), the filtered RDS file can be analyzed by the[trio_concordance.R](scripts/trio_concordance.R) script to output the Mendelian discordance rate and other relevant statistics. This step is run with the following command:
+When profiling Mendelian trios (father, mother, child), the filtered RDS file can be analyzed by the [trio_concordance.R](scripts/trio_concordance.R) script to output the Mendelian discordance rate and other relevant statistics. This step is run with the following command:
 ```Rscript trio_concordance.r [filtered genotypes RDS] [YAML config file]```
 
 ## Outputs
@@ -164,8 +164,8 @@ In the sample-specific results directory:
 1. [output.basename]_genotypes.rds: same data frame as [output.basename].rds with additional columns indicating if the call passed filtering, which filters failed (if any), the caller whose genotypes were used, and the final chosen genotype call. Columns are defined [here](LINK).
 
 ### C. Mendelian discordance
-1. [output.basename]_genotypes_[trioID]_genotypes_concordance.rds: same data frame as [output.basename]_genotypes.rds with additional columns indicating if the call follows patterns of Mendelian inheritance. Only the samples from the analyzed trio are present in this data frame. Columns are defined [here](LINK).
-2. [output.basename]_genotypes_[trioID]_genotypes_concordance_stats.tsv: text file listing genotyping and Mendelian concordance statistics for the analyzed trio.
+1. [output.basename]\_genotypes_[trioID]_concordance.rds: same data frame as [output.basename]_genotypes.rds with additional columns indicating if the call follows patterns of Mendelian inheritance. Only the samples from the analyzed trio are present in this data frame. Columns are defined [here](LINK).
+2. [output.basename]\_genotypes_[trioID]_concordance_stats.tsv: text file listing genotyping and Mendelian concordance statistics for the analyzed trio.
 
 ## Citation
 If you use STREAM, please cite:
