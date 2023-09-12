@@ -1,7 +1,7 @@
 
 #!/bin/bash
 
-# usage convert_to_hipstr.sh [Panel CSV] [full path to output HipSTR region file]
+# usage convert_to_hipstr.sh [Panel CSV] [full path to output HipSTR input file]
 # Formats list into HipSTR region file
 
 # Panel CSV is a CSV that contains info directly from the shiny server for all loci in panel

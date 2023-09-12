@@ -691,5 +691,8 @@ chrOrder <-c(paste0("chr",1:22),"chrX", "chrY")
 filtered_results <- rbind(nonA_loci, A_loci) %>%
   arrange(sampleID, factor(chr, chrOrder), start)
 
+# Save filtering config in same folder as output RDS
+save(args[2], paste0(dirname(args[1]), basename(args[2])))
+
 # Save genotypes list in RDS
 saveRDS(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_genotypes.rds"))

@@ -44,7 +44,12 @@ workflow {
     ALIGN_BAM( CONCAT_FASTQ.out.fastq )
     REMOVE_DUPS( ALIGN_BAM.out.bam )
     SORT_BAM( REMOVE_DUPS.out.unmarked )
-    PICARD( SORT_BAM.out.cram )
+    if( params.picard_probes == 'false') {
+      println 'Not performing hybrid capture quality analysis, since no probes specified'
+    }
+    else {
+      PICARD( SORT_BAM.out.cram )
+    }
     SPLIT_REGIONS()
     HIPSTR( SORT_BAM.out.hipstr.toList(), SPLIT_REGIONS.out.usats.flatten(), SORT_BAM.out.index.collect() )
     CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
@@ -66,8 +71,13 @@ workflow {
     JOIN_SAMPLES( JOIN_CALLS.out.rds.collect() )
   }
   
-  else if ( params.input_type == 'cram' ) {
-    PICARD( samples_ch.all )
+  else if( params.input_type == 'cram' ) {
+    if( params.picard_probes == 'false') {
+      println 'Not performing hybrid capture quality analysis, since no probes specified'
+    }
+    else {
+      PICARD( samples_ch.all )
+    }
     SPLIT_REGIONS()
     HIPSTR( samples_ch.cram.toList(), SPLIT_REGIONS.out.usats.flatten(), samples_ch.index.collect() )
     CONCAT_VCF( HIPSTR.out.small_vcf.collect(), HIPSTR.out.index.collect() )
@@ -77,6 +87,10 @@ workflow {
     BEDTOOLS_COVERAGE( samples_ch.all )
     if( params.supp_panel == 'false') {
       println 'Not performing supplementary panel genotyping, since no panel specified'
+    }
+    else if( params.supp_probes == 'false' ) {
+      SUPP_VARIANTS( samples_ch.all )
+      println 'Not performing supplementary panel capture quality analysis, since no probes specified'
     }
     else {
       SUPP_VARIANTS( samples_ch.all )
@@ -278,7 +292,6 @@ process SORT_BAM {
 process PICARD {
 
   time '8h'
-
   memory '32 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')

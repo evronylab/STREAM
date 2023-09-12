@@ -1,3 +1,3 @@
-NA12877	M	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12877.cram	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12877.cram.crai	trio1 typeA
-NA12889	M	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12889.cram	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12889.cram.crai	trio1	typeA
-NA12890	F	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12890.cram	/scratch/projects/evronylab/projects/TAPESTRY/analysis/Illumina_8-5-22/NA12890.cram.crai	trio1	typeA
+NA12877	M	/path/to/NA12877.cram	/path/to/NA12877.cram.crai	trio1 typeA
+NA12889	M	/path/to/NA12889.cram	/path/to/NA12889.cram.crai	trio1	typeA
+NA12890	F	/path/to/NA12890.cram	/path/to/NA12890.cram.crai	trio1	typeA

@@ -1,6 +1,6 @@
 #!/share/apps/r/4.3.1/gcc/bin/Rscript
 
-# usage: Rscript trio_concordance.r [filtered genotypes RDS] [config file]
+# usage: Rscript trio_concordance.r [filtered genotypes RDS] [YAML config file]
 
 # Filtered genotypes RDS is output of usat_genotype_filtering.r with genotype data for trios
 # Config file is a YAML file with parameter settings for each caller and ensemble calling
@@ -154,12 +154,10 @@ A_results_stats <- results %>% group_by(name, chr, motifLength, motif.family, ca
 # non poly-A loci stats
 nonA_stats <-
   data.frame(
-    # DELETE condition column when finished with optimization since parameters will not change
-    condition = sub('.*_([0-9]+)_genotypes\\.rds$', "\\1",args[1]),
     nonA_num_loci_panel = nrow(nonA_results_stats),
-    nonA_num_2bp_loci = length(which(nonA_results_stats$motifLength == 2)),
-    nonA_num_3bp_loci = length(which(nonA_results_stats$motifLength == 3)),
-    nonA_num_4bp_loci = length(which(nonA_results_stats$motifLength == 4)),
+    nonA_num_2bp_loci_panel = length(which(nonA_results_stats$motifLength == 2)),
+    nonA_num_3bp_loci_panel = length(which(nonA_results_stats$motifLength == 3)),
+    nonA_num_4bp_loci_panel = length(which(nonA_results_stats$motifLength == 4)),
     nonA_num_loci_passing_filters = length(which(nonA_results_stats$caller != "no call")),
     nonA_num_2bp_loci_passing_filters = length(which(nonA_results_stats$motifLength == 2 & nonA_results_stats$caller != "no call")),
     nonA_num_3bp_loci_passing_filters = length(which(nonA_results_stats$motifLength == 3 & nonA_results_stats$caller != "no call")),
@@ -236,8 +234,6 @@ nonA_stats <-
 # poly A loci stats  
 A_stats <-
   data.frame(
-    # DELETE condition column when finished with optimization since parameters will not change
-    condition = sub('.*_([0-9]+)_genotypes\\.rds$', "\\1",args[1]),
     A_num_loci_panel = nrow(A_results_stats),
     A_num_loci_passing_filters = length(which(A_results_stats$caller != "no call")),
     A_num_loci_failing_filters = length(which(A_results_stats$caller == "no call")),

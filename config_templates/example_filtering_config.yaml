@@ -103,10 +103,10 @@ ensemble:
   A.caller.three: no_caller
 sample:
   # trio ID from Nextflow pipeline
-  trio: your_trio
+  trio: trio1
   # sample IDs from Nextflow pipeline
-  father: individual_1
-  mother: individual_2
-  child: individual_3
+  father: NA12889
+  mother: NA12890
+  child: NA12877
   # fill in "M" or "F"
-  sex.of.child: F
+  sex.of.child: M
