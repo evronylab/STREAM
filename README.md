@@ -1,6 +1,6 @@
-# microsatellite_calling
+# STREAM
 
-STREAM is a computational workflow for ensemble genotyping of microsatellites from next-generation sequencing data using three callers: [HipSTR](https://hipstr-tool.github.io/HipSTR/), [GangSTR](https://github.com/gymreklab/GangSTR), and [ExpansionHunter](https://github.com/Illumina/ExpansionHunter). This repository contains instructions for creating the required input files, the genotype calling pipeline, and quality filtering scripts.
+STREAM (Short Tandem Repeat Ensemble Analysis Method) is a computational workflow for ensemble genotyping of microsatellites from next-generation sequencing data using three callers: [HipSTR](https://hipstr-tool.github.io/HipSTR/), [GangSTR](https://github.com/gymreklab/GangSTR), and [ExpansionHunter](https://github.com/Illumina/ExpansionHunter). This repository contains instructions for creating the required input files, the genotype calling pipeline, and quality filtering scripts.
 
 The basic steps of STREAM from sequencing data to filtered genotype calls are:
 1. Format list of microsatellites to be used as input for the various tools in STREAM
