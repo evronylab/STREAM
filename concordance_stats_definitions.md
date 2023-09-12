@@ -1,4 +1,4 @@
-#Concordance statistics for Mendelian trios
+# Concordance statistics for Mendelian trios
 
 The script [trio_concordance.R](scripts/trio_concordance.R) outputs a text file containing genotyping and concordance statistics about the analyzed Mendelian trio called [output.basename]_genotypes_[trioID]_genotypes_concordance_stats.tsv. The statistics calculated in this script are defined here.
 
@@ -8,7 +8,7 @@ Some statistics are calculated separately for HipSTR, GangSTR, and ExpansionHunt
 
 
 | **STATISTIC** | **DESCRIPTION** | **Also calculated for different motif lengths?** | **Also calculated for each caller?** |
-|------------|-----------------|
+|---------------|-----------------|--------------------------------------------------|--------------------------------------|
 | num_loci_panel | The number of loci in the panel. |&check;|&cross;|
 | num_loci_passing_filters | The number of loci passing all filtering thresholds. |&check;|&cross;|
 | num_loci_failing_filters | The number of loci failing filters. |&check;|&cross;|

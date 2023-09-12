@@ -26,38 +26,38 @@ The following columns are extracted directly from the VCF outputs of HipSTR, Gan
 
 ### HipSTR columns
 [(documentation)](https://hipstr-tool.github.io/HipSTR/#file-formats).
-H_GT
-H_GB (also split into separate columns for each allele, H_GB_1/2)
-H_Q
-H_DP
-H_DSTUTTER
-H_DFLANKINDEL
-H_ALLREADS (also split into separate columns for each allele, H_ALLREADS_1/2)
-H_MALLREADS (also split into separate columns for each allele, H_ALLREADS_1/2)
-H_GLDIFF
+- H_GT
+- H_GB (also split into separate columns for each allele, H_GB_1/2)
+- H_Q
+- H_DP
+- H_DSTUTTER
+- H_DFLANKINDEL
+- H_ALLREADS (also split into separate columns for each allele, H_ALLREADS_1/2)
+- H_MALLREADS (also split into separate columns for each allele, H_ALLREADS_1/2)
+- H_GLDIFF
 
 ### ExpansionHunter columns
 [(documentation)](https://support.illumina.com/content/dam/illumina-support/help/Illumina_DRAGEN_Bio_IT_Platform_v3_7_1000000141465/Content/SW/RepeatGenotyping_fDG_dtSW.htm).
-E_REF
-E_GT
-E_REPCN (also split into separate columns for each allele, E_REPCN_1/2)
-E_SO
-E_ADSP (also split into separate columns for each allele, E_ADSP_1/2)
-E_ADFL
-E_ADIR
-E_LC
+- E_REF
+- E_GT
+- E_REPCN (also split into separate columns for each allele, E_REPCN_1/2)
+- E_SO
+- E_ADSP (also split into separate columns for each allele, E_ADSP_1/2)
+- E_ADFL
+- E_ADIR
+- E_LC
 
 ### GangSTR columns
 [(documentation)](https://github.com/gymreklab/GangSTR#formats).
-G_REF
-G_GT
-G_Q
-G_REPCN (also split into separate columns for each allele, G_REPCN_1/2)
-G_REPCI
-G_DP
-G_RC
-G_ENCLREADS (also split into separate columns for each allele, G_ENCLREADS_1/2)
-G_FLNKREADS
+- G_REF
+- G_GT
+- G_Q
+- G_REPCN (also split into separate columns for each allele, G_REPCN_1/2)
+- G_REPCI
+- G_DP
+- G_RC
+- G_ENCLREADS (also split into separate columns for each allele, G_ENCLREADS_1/2)
+- G_FLNKREADS
 
 ## PIPELINE-generated columns
 The following columns are generated as part of the data processing in **PIPELINE**. These columns are present in all output data frames.
