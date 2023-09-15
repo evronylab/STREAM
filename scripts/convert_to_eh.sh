@@ -1,16 +1,16 @@
 
 #!/bin/bash
 
-# Usage: convert_to_eh.sh [Panel CSV] [list of ExpansionHunter exclusion loci] [full path to eh_to_json.R] [full path to ExpansionHunter json output file]
+# Usage: convert_to_eh.sh [CSV of targeted microsatellites] [list of ExpansionHunter exclusion loci] [full path to eh_to_json.R] [full path to ExpansionHunter json output file]
 
-# Panel CSV is a csv that contains info directly from the shiny server for all loci in panel
-# Panel CSV has 1-start, fully closed coordinates
-# requires panel CSV to be in the following order:
+# CSV of targeted microsatellites is a CSV that contains information about all loci in the target capture panel
+# The CSV has 1-start, fully closed coordinates
+# requires CSV to be in the following order:
 # row.number,seqnames,start,end,width,period.size,motif,motif.family
 
 # List of ExpansionHunter exclusion loci is a text file containing one locus name per line
 # Locus name is in the format MS-#####
-# The number in each name corresponds to the locus's row number in the Shiny server
+# The number in each name corresponds to the locus's row number in STRATIFY
 # These loci cause ExpansionHunter to crash due to too many Ns in the flanks in the reference genome
 
 # Temp file is in the following tab-delimited format:

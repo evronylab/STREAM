@@ -403,7 +403,7 @@ process HIPSTR {
       --fasta ${params.reference} \
       --regions ${usats} \
       --str-vcf array_${usats}_hipstr.vcf.gz \
-      --viz-out ${params.outputbasename}_${usats}.aln.viz.gz \
+      --viz-out ${params.outputbasename}_${usats:14}.aln.viz.gz \
       --min-reads 20 \
       --max-str-len 150 \
       --no-rmdup \
@@ -740,8 +740,6 @@ process QUERY_HIPSTR {
 
   time '1h'
 
-  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
-
   input:
     // load HipSTR VCF
     tuple val( sampleID ), path( vcf )
@@ -787,8 +785,6 @@ ExpansionHunter fields: https://github.com/Illumina/ExpansionHunter and https://
 process QUERY_EH {
 
   time '1h'
-
-  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
   input:
     // load ExpansionHunter VCF
@@ -836,8 +832,6 @@ GangSTR fields: https://github.com/gymreklab/GangSTR
 process QUERY_GANGSTR {
 
   time '1h'
-
-  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
   input:
     tuple val( sampleID ), path( vcf ), path( index )
