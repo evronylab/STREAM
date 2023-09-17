@@ -84,16 +84,17 @@ To prepare all the required formatted lists of microsatellites for STREAM, perfo
 1. Prepare the main microsatellite metadata CSV file with the fields: `row.number,seqnames,start,end,width,period.size,motif,motif.family`.
   - This file is specified for STREAM in the params.panel field of the Nextflow configuration file
   - When using our [STRATIFY](https://github.com/evronylab/STRATIFY) tool to design a panel of microsatellites for profiling, this can be downloaded via STRATIFY's "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the below formatting scripts.
-  - The fields in the CSV file are:
-    - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
-    - seqnames: The chromosome on which the microsatellite is located.
-    - start/end: The coordinates of the first and last bases in the microsatellite. Coordinates are 1-start, fully closed.
-    - width: The length of the microsatellite in base-pairs in the hg38 reference genome.
-    - period.size: The length of the microsatellite's repeat unit in base-pairs according to [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html).
-    - motif: The sequence of the microsatellite's repeat unit.
-    - motif.family: The group to which the microsatellite belongs when all possible reverse complements and circular permutations of the motif are reduced to a single motif. E.g. The ATG motif belongs to the ACT motif family because one possible circular permutation of ACT = CAT and the reverse complement of CAT = ATG.
+   - The fields in the CSV file are:
+     - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
+     - seqnames: The chromosome on which the microsatellite is located.
+     - start/end: The coordinates of the first and last bases in the microsatellite. Coordinates are 1-start, fully closed.
+     - width: The length of the microsatellite in base-pairs in the hg38 reference genome.
+     - period.size: The length of the microsatellite's repeat unit in base-pairs according to [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html).
+     - motif: The sequence of the microsatellite's repeat unit.
+     - motif.family: The group to which the microsatellite belongs when all possible reverse complements and circular permutations of the motif are reduced to a single motif. E.g. The ATG motif belongs to the ACT motif family because one possible circular permutation of ACT = CAT and the reverse complement of CAT = ATG.
 
 2. Convert the main microsatellite metadata CSV file to other file formats required by STREAM using the following scripts:
+
    a. [convert_to_hipstr.sh](scripts/convert_to_hipstr.sh): `convert_to_hipstr.sh [main microsatellites metadata CSV] [output file name of HipSTR-formatted list of microsatellites]`
       - The output file of this script is then specified for STREAM in the params.hipstr_usats field of the Nextflow configuration file
 
