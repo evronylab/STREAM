@@ -24,9 +24,9 @@ The basic steps of STREAM from sequencing data to filtered genotype calls are:
   - [Filtering](#b-filtering)
   - [Optional: Mendelian discordance](#c-optional-mendelian-discordance)
 - [Outputs](#outputs)
-  - [Genotype calling](#a-genotype-calling)
-  - [Filtering](#b-filtering)
-  - [Mendelian discordance](#c-mendelian-discordance)
+  - [Genotype calling outputs](#a-genotype-calling-outputs)
+  - [Filtering outputs](#b-filtering-outputs)
+  - [Mendelian discordance outputs](#c-mendelian-discordance-outputs)
 - [Citation](#citation)
 
 ## Computing environment
@@ -70,9 +70,9 @@ If starting from FASTQ files, prepare a tab-separated file with the following fi
 - [opticalDistance]: Setting for Picard MarkDuplicates option OPTICAL_DUPLICATE_PIXEL_DISTANCE, which depends on the sequencer used to generate the data.
 
 If starting from CRAM files, prepare a tab-separated file with the following fields (see [example](config_templates/trio_samples_cram.tsv)):
- ```[sampleID] [sex] [CRAM] [CRAM index] [trioID] [sampleType]```
- - [sampleID], [sex], [trioID], [sampleType]: Per above
- - [CRAM / CRAM index]: Full path to the CRAM file and its index. The CRAM file must have optical duplicates removed (i.e. removed, not just marked) and be coordinate-sorted.
+ `[sampleID] [sex] [CRAM] [CRAM index] [trioID] [sampleType]`
+- [sampleID], [sex], [trioID], [sampleType]: Per above
+- [CRAM / CRAM index]: Full path to the CRAM file and its index. The CRAM file must have optical duplicates removed (i.e. removed, not just marked) and be coordinate-sorted.
 
 When given CRAM files as an input, STREAM skips all alignment steps, including optical duplicate removal and sorting. 
 
@@ -82,41 +82,41 @@ STREAM requires files listing the microsatellite loci to analyze. Each tool in S
 To prepare all the required formatted lists of microsatellites for STREAM, perform the following steps:
 
 1. Prepare the main microsatellite metadata CSV file with the fields: `row.number,seqnames,start,end,width,period.size,motif,motif.family`.
-	- This file is specified for STREAM in the params.panel field of the Nextflow configuration file
-	- When using our [STRATIFY](https://github.com/evronylab/STRATIFY) tool to design a panel of microsatellites for profiling, this can be downloaded via [STRATIFY's](https://github.com/evronylab/STRATIFY) "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the below formatting scripts.
-	- The fields in the CSV file are:
-		- row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
-		- seqnames: The chromosome on which the microsatellite is located.
-		- start/end: The coordinates of the first and last bases in the microsatellite. Coordinates are 1-start, fully closed.
-		- width: The length of the microsatellite in base-pairs in the hg38 reference genome.
-		- period.size: The length of the microsatellite's repeat unit in base-pairs according to [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html).
-		- motif: The sequence of the microsatellite's repeat unit.
-		- motif.family: The group to which the microsatellite belongs when all possible reverse complements and circular permutations of the motif are reduced to a single motif. E.g. The ATG motif belongs to the ACT motif family because one possible circular permutation of ACT = CAT and the reverse complement of CAT = ATG.
+  - This file is specified for STREAM in the params.panel field of the Nextflow configuration file
+  - When using our [STRATIFY](https://github.com/evronylab/STRATIFY) tool to design a panel of microsatellites for profiling, this can be downloaded via STRATIFY's "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the below formatting scripts.
+  - The fields in the CSV file are:
+    - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
+    - seqnames: The chromosome on which the microsatellite is located.
+    - start/end: The coordinates of the first and last bases in the microsatellite. Coordinates are 1-start, fully closed.
+    - width: The length of the microsatellite in base-pairs in the hg38 reference genome.
+    - period.size: The length of the microsatellite's repeat unit in base-pairs according to [Tandem Repeats Finder](https://tandem.bu.edu/trf/trf.html).
+    - motif: The sequence of the microsatellite's repeat unit.
+    - motif.family: The group to which the microsatellite belongs when all possible reverse complements and circular permutations of the motif are reduced to a single motif. E.g. The ATG motif belongs to the ACT motif family because one possible circular permutation of ACT = CAT and the reverse complement of CAT = ATG.
 
 2. Convert the main microsatellite metadata CSV file to other file formats required by STREAM using the following scripts:
-	a. [convert_to_hipstr.sh](scripts/convert_to_hipstr.sh): `convert_to_hipstr.sh [main microsatellites metadata CSV] [output file name of HipSTR-formatted list of microsatellites]`
-		- The output file of this script is then specified for STREAM in the params.hipstr_usats field of the Nextflow configuration file
+   a. [convert_to_hipstr.sh](scripts/convert_to_hipstr.sh): `convert_to_hipstr.sh [main microsatellites metadata CSV] [output file name of HipSTR-formatted list of microsatellites]`
+      - The output file of this script is then specified for STREAM in the params.hipstr_usats field of the Nextflow configuration file
 
-	b. [convert_to_gangstr.sh](scripts/convert_to_gangstr.sh): `convert_to_gangstr.sh [main microsatellites metadata CSV] [output file name of GangSTR-formatted list of microsatellites]`
-		- The output file of this script is then specified for STREAM in the params.gangstr_usats field of the Nextflow configuration file
+   b. [convert_to_gangstr.sh](scripts/convert_to_gangstr.sh): `convert_to_gangstr.sh [main microsatellites metadata CSV] [output file name of GangSTR-formatted list of microsatellites]`
+      - The output file of this script is then specified for STREAM in the params.gangstr_usats field of the Nextflow configuration file
 
-	c. [convert_to_eh.sh](scripts/convert_to_eh.sh): `convert_to_eh.sh [main microsatellites metadata CSV] [list of ExpansionHunter exclusion loci] [full path to eh_to_json.R] [output file name of ExpansionHunter-formatted list of microsatellites]`
-		- The output file of this script is then specified for STREAM in the params.eh_usats field of the Nextflow configuration file
-		- This script requires the [eh_to_json.R](scripts/eh_to_json.R) script.
-		- This script requires a list of loci that cause ExpansionHunter to crash and that should be excluded from the ExpansionHunter analysis. This is because loci with too many Ns in the flanking regions cause ExpansionHunter to stop running instead of skipping the locus. We have created a [list](panels/eh_exclusion_list.txt) of loci to exclude from the ExpansionHunter analysis to avoid the analysis ending prematurely. The IDs in the list correspond to the row.number field of the panel CSV when downloaded from [STRATIFY](https://github.com/evronylab/STRATIFY), with the string "MS-" appended as a prefix.
+   c. [convert_to_eh.sh](scripts/convert_to_eh.sh): `convert_to_eh.sh [main microsatellites metadata CSV] [list of ExpansionHunter exclusion loci] [full path to eh_to_json.R] [output file name of ExpansionHunter-formatted list of microsatellites]`
+      - The output file of this script is then specified for STREAM in the params.eh_usats field of the Nextflow configuration file
+      - This script requires the [eh_to_json.R](scripts/eh_to_json.R) script.
+      - This script requires a list of loci that cause ExpansionHunter to crash and that should be excluded from the ExpansionHunter analysis. This is because loci with too many Ns in the flanking regions cause ExpansionHunter to stop running instead of skipping the locus. We have created a [list](panels/eh_exclusion_list.txt) of loci to exclude from the ExpansionHunter analysis to avoid the analysis ending prematurely. The IDs in the list correspond to the row.number field of the panel CSV when downloaded from [STRATIFY](https://github.com/evronylab/STRATIFY), with the string "MS-" appended as a prefix.
 	
-	d. [convert_to_bed.sh](scripts/convert_to_bed.sh): `convert_to_bed.sh [main microsatellites metadata CSV] [output file name of bedtools-formatted list of microsatellites]`
-		- The output file of this script is then specified for STREAM in the params.bedtools_usats field of the Nextflow configuration file
+   d. [convert_to_bed.sh](scripts/convert_to_bed.sh): `convert_to_bed.sh [main microsatellites metadata CSV] [output file name of bedtools-formatted list of microsatellites]`
+      - The output file of this script is then specified for STREAM in the params.bedtools_usats field of the Nextflow configuration file
 
 ### D. Optional files if microsatellites were profiled by hybridization capture
 If the microsatellites were profiled by hybridization capture, the Picard CollectHsMetrics tool for calculating capture performance metrics requires two files, one containing the coordinates of the targeted microsatellites and one containing the coordinates of the capture probes. These files are prepared as follows:
 
 a. Make two tab-separated files of coordinates, one of the microsatellite loci and one of the probes, with the fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open (BED format).
-	- Note: the file of microsatellite loci in this format can be created from the main microsatellite metadata CSV file obtained from STRATIFY with the command: `awk -F',' -e '{print $2"\t"($3-1)"\t"$4}' [STRATIFY_loci.csv] > [STRATIFY_loci.bed]`
+   - Note: the file of microsatellite loci in this format can be created from the main microsatellite metadata CSV file obtained from STRATIFY with the command: `awk -F',' -e '{print $2"\t"($3-1)"\t"$4}' [STRATIFY_loci.csv] > [STRATIFY_loci.bed]`
 
 b. Run [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh) on each file with the command: `convert_to_interval_list.sh [microsatellites/probes list] [output file basename] [Reference genome dictionary file]`
-	- The output is [output file basename].interval_list
-	- Note: the dictionary (.dict) file format is described in the [Picard BedToIntervalList documentation](https://gatk.broadinstitute.org/hc/en-us/articles/360036883931-BedToIntervalList-Picard)
+   - The output is [output file basename].interval_list
+   - Note: the dictionary (.dict) file format is described in the [Picard BedToIntervalList documentation](https://gatk.broadinstitute.org/hc/en-us/articles/360036883931-BedToIntervalList-Picard)
 
 The resulting microsatellite and probe coordinate files are then specified for STREAM in the params.usats_panel_picard and params.usats_probes_picard fields, respectively, of the Nextflow configuration file.
 
@@ -128,8 +128,8 @@ These files are prepared as follows:
 a. Make tab-separated files, one of the supplementary loci and if needed, one of the probes, with the fields: `[chr] [start coordinate] [end coordinate]`. Coordinates must be 0-based, half-open (BED format).
 
 b. Run [convert_to_interval_list.sh](scripts/convert_to_interval_list.sh) on each file with the command: `convert_to_interval_list.sh [targeted loci/probes list] [output file basename] [Reference genome dictionary file]`
-	- The output is [output file basename].interval_list
-	- Note: the dictionary (.dict) file format is described in the [Picard BedToIntervalList documentation](https://gatk.broadinstitute.org/hc/en-us/articles/360036883931-BedToIntervalList-Picard)
+   - The output is [output file basename].interval_list
+   - Note: the dictionary (.dict) file format is described in the [Picard BedToIntervalList documentation](https://gatk.broadinstitute.org/hc/en-us/articles/360036883931-BedToIntervalList-Picard)
 
 The resulting supplementary loci and probe coordinate files are then specified for STREAM in the params.supp_panel_picard and params.supp_probes_picard fields, respectively, of the Nextflow configuration file. Note, if the supplementary loci were not targeted by hybridization capture, the user can specify only the params.supp_panel_picard file.
 
@@ -164,22 +164,22 @@ Note: filters related to read depth can have different values specified for each
 The genotype calling step applies all three callers to produce initial unfiltered genotype calls for each sample and locus. The main output is an RDS data frame containing the genotype calls.
 
 The genotype calling step is run with the following command:
-```nextflow -C nextflow.config run usat_calling.nf```
+`nextflow -C nextflow.config run usat_calling.nf`
 
 ### B. Filtering
 The filtering step generates final genotypes by filtering calls from the genotype calling step on a variety of parameter thresholds and then choosing a caller for each locus whose genotypes are used across all samples at that locus. 
 
 The filtering step is run with the following command:
-```Rscript usat_genotype_filtering.R [RDS output of the genotype calling step] [YAML config file]```
+`Rscript usat_genotype_filtering.R [RDS output of the genotype calling step] [YAML config file]`
 
 ### C. Optional: Mendelian discordance
 When profiling Mendelian trios (father, mother, child), the filtered RDS file can be analyzed by the [trio_concordance.R](scripts/trio_concordance.R) script to output the Mendelian discordance rate and other relevant statistics. This step is run with the following command:
-```Rscript trio_concordance.r [filtered genotypes RDS] [YAML config file]```
+`Rscript trio_concordance.r [filtered genotypes RDS] [YAML config file]`
 
 ## Outputs
 Note: [items in brackets] refer to parameters defined in the Nextflow configuration file.
 
-### A. Genotype calling
+### A. Genotype calling outputs
 In the main results directory:
 1. nextflow.config: the configuration file used to run STREAM, for documentation
 2. Samples list: the sample list TSV defined in the nextflow.config file, for documentation
@@ -201,11 +201,11 @@ In the sample-specific results directory:
 7. [sampleID].GATK.g.vcf.gz: output of GATK HaplotypeCaller, if a supplementary panel was specified
 8. [sampleID].GATK.vcf.gz: output of GATK GenotypeGVCFs, if a supplementary panel was specified
 
-### B. Filtering
+### B. Filtering outputs
 1. YAML config file: a copy of the configuration file defining the filtering thresholds used by the script, for documentation
 2. [output.basename]_genotypes.rds: same data frame as [output.basename].rds with additional columns indicating if the call passed filtering, which filters failed (if any), the caller whose genotypes were used, and the final chosen genotype call. Columns are defined [here](docs/column_definitions.md).
 
-### C. Mendelian discordance
+### C. Mendelian discordance outputs
 If the optional Mendelian discordance step was performed, the following outputs are produced:
 1. [output.basename]\_genotypes_[trioID]_concordance.rds: same data frame as [output.basename]_genotypes.rds with an additional column indicating if the call follows patterns of Mendelian inheritance. Only the samples from the analyzed trio are present in this data frame. Columns are defined [here](docs/concordance_stats_definitions.md).
 2. [output.basename]\_genotypes_[trioID]_concordance_stats.tsv: text file listing genotyping and Mendelian concordance statistics for the analyzed trio.
