@@ -3,7 +3,7 @@
 
 # usage: Rscript join_str_calls_nextflow.r ${panel CSV} ${sampleID} ${sex} ${trio} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
 
-# Panel CSV is a csv that contains info directly from the shiny server for all loci in panel
+# Panel CSV is a csv that contains info directly from the STRATIFY tool for all loci in panel
 # Panel CSV has 1-start, fully closed coordinates
 # Requires panel CSV to be in the following order:
 # row.number,seqnames,start,end,width,period.size,motif,motif.family

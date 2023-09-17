@@ -1,10 +1,10 @@
 
 #!/bin/bash
 
-# usage convert_to_hipstr.sh [CSV of targeted microsatellites] [full path to output HipSTR input file]
+# usage convert_to_hipstr.sh [main microsatellites metadata CSV] [full path to output HipSTR input file]
 # Formats list into HipSTR region file
 
-# CSV of targeted microsatellites is a CSV that contains information about all loci in the target capture panel
+# The microsatellites metadata CSV contains information about all loci to profile
 # The CSV has 1-start, fully closed coordinates
 # requires CSV to be in the following order:
 # row.number,seqnames,start,end,width,period.size,motif,motif.family

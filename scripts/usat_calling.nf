@@ -44,7 +44,7 @@ workflow {
     ALIGN_BAM( CONCAT_FASTQ.out.fastq )
     REMOVE_DUPS( ALIGN_BAM.out.bam )
     SORT_BAM( REMOVE_DUPS.out.unmarked )
-    if( params.picard_probes == 'false') {
+    if( params.usats_probes_picard == 'false') {
       println 'Not performing hybrid capture quality analysis, since no probes specified'
     }
     else {
@@ -57,8 +57,12 @@ workflow {
     EXPANSION_HUNTER( SORT_BAM.out.cram )
     GANGSTR( SORT_BAM.out.cram )
     BEDTOOLS_COVERAGE( SORT_BAM.out.cram )
-    if( params.supp_panel == 'false') {
+    if( params.supp_panel_picard == 'false') {
       println 'Not performing supplementary panel genotyping, since no panel specified'
+    }
+    else if( params.supp_probes_picard == 'false' ) {
+      SUPP_VARIANTS( SORT_BAM.out.cram )
+      println 'Not performing supplementary panel capture quality analysis, since no probes specified'
     }
     else {
       SUPP_VARIANTS( SORT_BAM.out.cram )
@@ -72,7 +76,7 @@ workflow {
   }
   
   else if( params.input_type == 'cram' ) {
-    if( params.picard_probes == 'false') {
+    if( params.usats_probes_picard == 'false') {
       println 'Not performing hybrid capture quality analysis, since no probes specified'
     }
     else {
@@ -85,10 +89,10 @@ workflow {
     EXPANSION_HUNTER( samples_ch.all )
     GANGSTR( samples_ch.all )
     BEDTOOLS_COVERAGE( samples_ch.all )
-    if( params.supp_panel == 'false') {
+    if( params.supp_panel_picard == 'false') {
       println 'Not performing supplementary panel genotyping, since no panel specified'
     }
-    else if( params.supp_probes == 'false' ) {
+    else if( params.supp_probes_picard == 'false' ) {
       SUPP_VARIANTS( samples_ch.all )
       println 'Not performing supplementary panel capture quality analysis, since no probes specified'
     }
@@ -317,8 +321,8 @@ process PICARD {
         I=${cram} \\
         O=${sampleID}_picard_usats.txt \\
         R=${params.reference} \\
-        BAIT_INTERVALS=${params.picard_probes} \\
-        TARGET_INTERVALS=${params.picard_usats}
+        BAIT_INTERVALS=${params.usats_probes_picard} \\
+        TARGET_INTERVALS=${params.usats_panel_picard}
 
   # run Picard with probes as "target" coordinates
   # check capture quality metrics from this file
@@ -326,8 +330,8 @@ process PICARD {
         I=${cram} \\
         O=${sampleID}_picard_probes.txt \\
         R=${params.reference} \\
-        BAIT_INTERVALS=${params.picard_probes} \\
-        TARGET_INTERVALS=${params.picard_probes}
+        BAIT_INTERVALS=${params.usats_probes_picard} \\
+        TARGET_INTERVALS=${params.usats_probes_picard}
 
   """
 }
@@ -649,7 +653,7 @@ process SUPP_VARIANTS {
   gatk --java-options "-Xmx20g" HaplotypeCaller \
      -I ${cram} -O ${sampleID}.GATK.g.vcf.gz \
      -R ${params.reference} \
-     --intervals ${params.supp_panel} \
+     --intervals ${params.supp_panel_picard} \
      -ERC GVCF \
      -G StandardAnnotation \
      -G StandardHCAnnotation \
@@ -659,7 +663,7 @@ process SUPP_VARIANTS {
    
    gatk GenotypeGVCFs \
      -R ${params.reference} \
-     --intervals ${params.supp_panel} \
+     --intervals ${params.supp_panel_picard} \
      -V ${sampleID}.GATK.g.vcf.gz \
      -O ${sampleID}.GATK.vcf.gz
   
@@ -692,8 +696,8 @@ process SUPP_PICARD {
         I=${cram} \\
         O=${sampleID}_picard_supp_panel.txt \\
         R=${params.reference} \\
-        BAIT_INTERVALS=${params.supp_probes} \\
-        TARGET_INTERVALS=${params.supp_panel}
+        BAIT_INTERVALS=${params.supp_probes_picard} \\
+        TARGET_INTERVALS=${params.supp_panel_picard}
         
   # run Picard CollectHsMetrics on supplementary panel coordinates
   # probes as targets
@@ -701,8 +705,8 @@ process SUPP_PICARD {
         I=${cram} \\
         O=${sampleID}_picard_supp_probes.txt \\
         R=${params.reference} \\
-        BAIT_INTERVALS=${params.supp_probes} \\
-        TARGET_INTERVALS=${params.supp_probes}
+        BAIT_INTERVALS=${params.supp_probes_picard} \\
+        TARGET_INTERVALS=${params.supp_probes_picard}
         
   """
 }

@@ -8,6 +8,7 @@
 # The TSV file should have 0-start, fully closed coordinates
 # The TSV file must be tab-separated and have the following fields:
 # [chr] [start coordinate] [end coordinate]
+# The output is [output file basename].interval_list
 
 module load jdk/11.0.9
 
