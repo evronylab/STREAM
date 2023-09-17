@@ -82,8 +82,8 @@ STREAM requires files listing the microsatellite loci to analyze. Each tool in S
 To prepare all the required formatted lists of microsatellites for STREAM, perform the following steps:
 
 1. Prepare the main microsatellite metadata CSV file with the fields: `row.number,seqnames,start,end,width,period.size,motif,motif.family`.
-  - This file is specified for STREAM in the params.panel field of the Nextflow configuration file
-  - When using our [STRATIFY](https://github.com/evronylab/STRATIFY) tool to design a panel of microsatellites for profiling, this can be downloaded via STRATIFY's "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the below formatting scripts.
+   - This file is specified for STREAM in the params.panel field of the Nextflow configuration file
+   - When using our [STRATIFY](https://github.com/evronylab/STRATIFY) tool to design a panel of microsatellites for profiling, this can be downloaded via STRATIFY's "View Data" panel. The CSV file will download with a header, but it should be **REMOVED** prior to running the below formatting scripts.
    - The fields in the CSV file are:
      - row.number: A unique ID for each microsatellite locus (string, numeric, or a combination such as MS-#).
      - seqnames: The chromosome on which the microsatellite is located.
