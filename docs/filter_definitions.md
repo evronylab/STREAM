@@ -11,7 +11,7 @@ Additionally, the following filters that are related to read depth can be specif
 ## HipSTR filters:
 
 | **FILTER** | **DEFINITION** | **ASSOCIATED COLUMN(S)** | **FILTER TYPE** |
-|------|-------|--------|
+|------|-------|--------|--------|
 | min.qual | Minimum quality score. | H_Q | sample-level |
 | min.mallreads | Minimum number of informative reads used to make the genotype call under the maximum likelihood model. | H_MALLREADS_SUM | sample-level |
 | min.allele.mallreads | Minimum number of informative reads supporting each allele under the maximum likelihood model. Both alleles must pass the filtering threshold. | H_MALLREADS_1/2 | sample-level |
@@ -30,7 +30,7 @@ Additionally, the following filters that are related to read depth can be specif
 ## GangSTR filters:
 
 | **FILTER** | **DEFINITION** | **ASSOCIATED COLUMN(S)** | **FILTER TYPE** |
-|------|-------|--------|
+|------|-------|--------|--------|
 | min.qual | Minimum quality score. | G_Q | sample-level |
 | min.total.reads | Minimum number of spanning reads at the locus. | G_ENCLREADS_SUM | sample-level |
 | min.allele.reads | Minimum number of spanning reads supporting each allele. Both alleles must pass the filtering threshold. | G_ENCLREADS_1/2 | sample-level |
@@ -42,7 +42,7 @@ Additionally, the following filters that are related to read depth can be specif
 ## ExpansionHunter filters:
 
 | **FILTER** | **DEFINITION** | **ASSOCIATED COLUMN(S)** | **FILTER TYPE** |
-|------|-------|--------|
+|------|-------|--------|--------|
 | min.total.reads | Minimum number of spanning reads at the locus as measured using bedtools. | B_depth | sample-level |
 | min.allele.reads | Minimum number of spanning reads supporting each allele. Both alleles must pass the filtering threshold. | E_ADSP_1/2 | sample-level |
 | min.vaf | Minimum variant allele fraction (VAF) of each allele. Both alleles must pass the filtering threshold. | E_VAF_1/2 | sample-level |
