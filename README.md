@@ -157,7 +157,7 @@ The filtering step reads filtering threshold values from a YAML configuration fi
 
 Filtering thresholds can be set separately for "A" loci (poly-A motif) and "nonA" loci (all other motifs) because poly-A loci are more mutable than loci with longer motifs and may need to be filtered differently.
 
-Note: filters related to read depth can have different values specified for each [sampleType] group (typeA or typeB) as defined in the [samples list](#b-samples-list), which can be useful when performing an analysis combining different types of samples such as bulk and capture samples, or exome and genome samples.
+Note: filters related to read depth can have different values specified for each [sampleType] group (typeA or typeB) as defined in the [samples list](#b-samples-list), which can be useful when performing an analysis combining different types of samples such as non-capture and capture samples, or exome and genome samples.
 
 ## Running STREAM
 
