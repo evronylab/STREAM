@@ -164,14 +164,14 @@ process FASTQC {
   output:
     // save HTML reports
     tuple val( sampleID ), path("*_fastqc.html")
-    // save sample TSV to results directory
-    path( "${params.samples}" )
-    // save configuration file to results directory
-    path( "${workflow.configFiles}" )
-
 
   script:
   """
+  # save sample TSV to results directory
+  cp ${params.samples} ${params.results}
+  # save configuration file to results directory
+  cp ${workflow.configFiles} ${params.results}
+  
   module load ${params.fastqc}
 
   # make results directory if it doesn't already exist
