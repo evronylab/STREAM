@@ -3,6 +3,8 @@ The raw genotype data from the genotype calling step must be filtered for qualit
 
 Each of the below filters in the filter YAML config file is defined separately for "A" loci (poly-A motif) with prefix "A." and for "nonA" loci (all other motifs) with prefix "nonA.". This is because poly-A loci are more mutable than loci with longer motifs and may need to be filtered differently.
 
+Each filter can be categorized as one of two filter types: sample-level and locus-level. Sample-level filters are evaluated for each sample individually, while locus-level filters are evaluated across all samples at each locus.
+
 Additionally, the following filters that are related to read depth can be specified for each [sampleType] group (typeA or typeB) as defined in the Samples list TSV file. This can be useful when performing an analysis combining different types of samples such as non-capture and capture samples, or exome and genome samples:
  - HipSTR: min.mallreads, min.allele.mallreads, min.allreads, min.allele.allreads, min.gldiff, min.mean.mallreads, min.mean.allreads
  - GangSTR: min.total.reads, min.allele.reads, min.mean.total.reads, min.total.reads, min.allele.reads, min.mean.total.reads
