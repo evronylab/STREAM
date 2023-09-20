@@ -170,7 +170,7 @@ process FASTQC {
   # save sample TSV to results directory
   cp ${params.samples} ${params.results}
   # save configuration file to results directory
-  cp ${workflow.configFiles} ${params.results}
+  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
   
   module load ${params.fastqc}
 
