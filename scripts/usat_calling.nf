@@ -167,15 +167,15 @@ process FASTQC {
 
   script:
   """
-  # save sample TSV to results directory
-  cp ${params.samples} ${params.results}
-  # save configuration file to results directory
-  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
-  
   module load ${params.fastqc}
 
   # make results directory if it doesn't already exist
   mkdir -p \$(dirname ${params.results}/${sampleID}_results)
+  
+  # save sample TSV to results directory
+  cp ${params.samples} ${params.results}
+  # save configuration file to results directory
+  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
 
   # run fastqc on read 1 and read 2 FASTQ files
   fastqc ${read1} ${read2}
