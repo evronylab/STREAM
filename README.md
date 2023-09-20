@@ -214,10 +214,10 @@ If the optional Mendelian discordance step was performed, the following outputs 
 ## Citation
 If you use STREAM, please cite:
 
-Loh CA\*, Shields DA*, Schwing A, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv 2023.month.day.#####; doi: LINK (2023).
+STREAM: Loh CA\*, Shields DA*, Schwing A, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv 2023.month.day.#####; doi: LINK (2023).
 
-Willems, T., Zielinski, D., Yuan, J., Gordon, A., Gymrek, M., & Erlich, Y. (2017). Genome-wide profiling of heritable and de novo STR variations. Nature Methods, 14(6), 590-592. doi:[10.1038/nmeth.4267](https://doi.org/10.1038/nmeth.4267)
+HipSTR: Willems, T., Zielinski, D., Yuan, J., Gordon, A., Gymrek, M., & Erlich, Y. (2017). Genome-wide profiling of heritable and de novo STR variations. Nature Methods, 14(6), 590-592. doi:[10.1038/nmeth.4267](https://doi.org/10.1038/nmeth.4267)
 
-Mousavi, N., Shleizer-Burko, S., Yanicky, R., & Gymrek, M. (2019). Profiling the genome-wide landscape of tandem repeat expansions. Nucleic Acids Research, 47(15), e90. doi:[10.1093/nar/gkz501](https://doi.org/10.1093/nar/gkz501)
+GangSTR: Mousavi, N., Shleizer-Burko, S., Yanicky, R., & Gymrek, M. (2019). Profiling the genome-wide landscape of tandem repeat expansions. Nucleic Acids Research, 47(15), e90. doi:[10.1093/nar/gkz501](https://doi.org/10.1093/nar/gkz501)
 
-Dolzhenko, E., Deshpande, V., Schlesinger, F., Krusche, P., Petrovski, R., Chen, S., . . . Eberle, M. A. (2019). ExpansionHunter: a sequence-graph-based tool to analyze variation in short tandem repeat regions. Bioinformatics, 35(22), 4754-4756. doi:[10.1093/bioinformatics/btz431](https://doi.org/10.1093/bioinformatics/btz431)
+ExpansionHunter: Dolzhenko, E., Deshpande, V., Schlesinger, F., Krusche, P., Petrovski, R., Chen, S., . . . Eberle, M. A. (2019). ExpansionHunter: a sequence-graph-based tool to analyze variation in short tandem repeat regions. Bioinformatics, 35(22), 4754-4756. doi:[10.1093/bioinformatics/btz431](https://doi.org/10.1093/bioinformatics/btz431)
