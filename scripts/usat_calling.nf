@@ -407,7 +407,7 @@ process HIPSTR {
       --fasta ${params.reference} \
       --regions ${usats} \
       --str-vcf array_${usats}_hipstr.vcf.gz \
-      --viz-out ${params.outputbasename}_${usats:14}.aln.viz.gz \
+      --viz-out ${params.outputbasename}_${usats}.aln.viz.gz \
       --min-reads 20 \
       --max-str-len 150 \
       --no-rmdup \
