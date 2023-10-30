@@ -364,7 +364,7 @@ process HIPSTR {
   time '4h'
   memory '32 GB'
   
-  publishDir("${params.results}/hipstr_aln_viz", pattern: "${params.outputbasename}_${usats:14}.aln.viz.gz", mode: 'copy')
+  publishDir("${params.results}/hipstr_aln_viz", pattern: "${params.outputbasename}_*.aln.viz.gz", mode: 'copy')
 
   input:
     // load CRAMs
@@ -379,7 +379,7 @@ process HIPSTR {
 
   output:
     // save HipSTR visualization files
-    path( "${params.outputbasename}_${usats:14}.aln.viz.gz" )
+    path( "${params.outputbasename}_*.aln.viz.gz" )
   
     // channel for VCFs to be concatenated
     path( "array_${usats}_hipstr.vcf.gz" ), emit: small_vcf
