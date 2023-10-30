@@ -172,11 +172,6 @@ process FASTQC {
   # make results directory if it doesn't already exist
   mkdir -p \$(dirname ${params.results}/${sampleID}_results)
   
-  # save sample TSV to results directory
-  cp ${params.samples} ${params.results}
-  # save configuration file to results directory
-  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
-
   # run fastqc on read 1 and read 2 FASTQ files
   fastqc ${read1} ${read2}
 
@@ -896,6 +891,11 @@ process JOIN_SAMPLES {
 
   script:
   """
+  # save sample TSV to results directory
+  cp ${params.samples} ${params.results}
+  # save configuration file to results directory
+  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
+
   # arguments: [RDS files] [basename for joint dataframe]
   # Nextflow automatically outputs all RDS files in space-separated list
   Rscript ${params.script_path}/join_str_samples_nextflow.r ${RDS} ${params.outputbasename}
