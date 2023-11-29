@@ -214,7 +214,7 @@ If the optional Mendelian discordance step was performed, the following outputs 
 ## Citation
 If you use STREAM, please cite:
 
-STREAM: Loh CA\*, Shields DA*, Schwing A, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv 2023.month.day.#####; doi: LINK (2023).
+STREAM: Loh CA\*, Shields DA*, Schwing A, Evrony GD. High-fidelity, large-scale targeted profiling of microsatellites. bioRxiv; doi: [https://doi.org/10.1101/2023.11.28.569106](https://www.biorxiv.org/content/10.1101/2023.11.28.569106v1) (2023).
 
 HipSTR: Willems, T., Zielinski, D., Yuan, J., Gordon, A., Gymrek, M., & Erlich, Y. (2017). Genome-wide profiling of heritable and de novo STR variations. Nature Methods, 14(6), 590-592. doi:[10.1038/nmeth.4267](https://doi.org/10.1038/nmeth.4267)
 
