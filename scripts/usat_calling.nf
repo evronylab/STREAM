@@ -866,7 +866,7 @@ process JOIN_CALLS {
 
   script:
   """
-  Rscript ${params.script_path}/join_str_calls_nextflow.r ${params.panel} ${sampleID} ${sex} ${trio} ${sampleType} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
+  Rscript ${params.script_path}/join_str_calls_nextflow.R ${params.panel} ${sampleID} ${sex} ${trio} ${sampleType} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
 
   """
 }
@@ -898,7 +898,7 @@ process JOIN_SAMPLES {
 
   # arguments: [RDS files] [basename for joint dataframe]
   # Nextflow automatically outputs all RDS files in space-separated list
-  Rscript ${params.script_path}/join_str_samples_nextflow.r ${RDS} ${params.outputbasename}
+  Rscript ${params.script_path}/join_str_samples_nextflow.R ${RDS} ${params.outputbasename}
 
   """
 }
