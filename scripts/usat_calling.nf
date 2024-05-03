@@ -894,7 +894,7 @@ process JOIN_SAMPLES {
   # save sample TSV to results directory
   cp ${params.samples} ${params.results}
   # save configuration file to results directory
-  cp `${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
+  cp `echo ${workflow.configFiles} | sed -e 's/\\[//' -e 's/\\]//'` ${params.results}
 
   # arguments: [RDS files] [basename for joint dataframe]
   # Nextflow automatically outputs all RDS files in space-separated list
