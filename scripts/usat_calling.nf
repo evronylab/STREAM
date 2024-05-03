@@ -356,7 +356,7 @@ process SPLIT_REGIONS {
 
 process HIPSTR {
 
-  time '4h'
+  time '10h'
   memory '32 GB'
   
   publishDir("${params.results}/hipstr_aln_viz", pattern: "${params.outputbasename}_*.aln.viz.gz", mode: 'copy')
@@ -497,11 +497,11 @@ process SPLIT_VCF {
 
 process EXPANSION_HUNTER {
 
-  time '10h'
+  time '40h'
 
   cpus 14
 
-  memory '48 GB'
+  memory '128 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
@@ -830,7 +830,7 @@ GangSTR fields: https://github.com/gymreklab/GangSTR
 
 process QUERY_GANGSTR {
 
-  time '1h'
+  time '2h'
 
   input:
     tuple val( sampleID ), path( vcf ), path( index )
@@ -876,8 +876,8 @@ process JOIN_CALLS {
 
 process JOIN_SAMPLES {
 
-  time '1h'
-  memory '8 GB'
+  time '2h'
+  memory '32 GB'
 
   publishDir("${params.results}", mode: 'copy')
 
