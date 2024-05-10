@@ -310,6 +310,7 @@ process PICARD {
 
   script:
   """
+  module load ${params.jdk}
   # run Picard with microsatellites as "target" coordinates
   # check zero-coverage targets from this file
   java -jar ${params.picard} CollectHsMetrics \\
@@ -686,6 +687,7 @@ process SUPP_PICARD {
 
   script:
   """
+  module load ${params.jdk}
   # run Picard CollectHsMetrics on supplementary panel coordinates
   java -jar ${params.picard} CollectHsMetrics \\
         I=${cram} \\
@@ -866,6 +868,7 @@ process JOIN_CALLS {
 
   script:
   """
+  module load ${params.r}
   Rscript ${params.script_path}/join_str_calls_nextflow.R ${params.panel} ${sampleID} ${sex} ${trio} ${sampleType} ${hipstr} ${expansionhunter} ${gangstr} ${bedtools}
 
   """
@@ -891,6 +894,7 @@ process JOIN_SAMPLES {
 
   script:
   """
+  module load ${params.r}
   # save sample TSV to results directory
   cp ${params.samples} ${params.results}
   # save configuration file to results directory
