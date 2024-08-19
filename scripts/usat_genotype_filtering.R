@@ -687,9 +687,10 @@ A_loci <-
 # Define chromosome sort order
 chrOrder <-c(paste0("chr",1:22),"chrX", "chrY")
 
-# Join non-A and poly-A loci and sort by chromosome and start coordinate
+# Join non-A and poly-A loci, sort by chromosome and start coordinate, and remove grouping
 filtered_results <- rbind(nonA_loci, A_loci) %>%
-  arrange(sampleID, factor(chr, chrOrder), start)
+  arrange(sampleID, factor(chr, chrOrder), start) %>%
+  ungroup
 
 # Save genotypes list in RDS
 saveRDS(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_genotypes.rds"))
