@@ -41,7 +41,14 @@ workflow {
   if( params.input_type == 'fastq' ) {
     CONCAT_FASTQ( samples_ch )
     FASTQC( CONCAT_FASTQ.out.fastq )
-    ALIGN_BAM( CONCAT_FASTQ.out.fastq )
+
+    if( params.perform_transcriptome_filtering == 'true' ) {
+      TRANSCRIPTOME_FILTERING( CONCAT_FASTQ.out.fastq )
+      ALIGN_BAM( TRANSCRIPTOME_FILTERING.out.fastq )
+    }else{
+      ALIGN_BAM( CONCAT_FASTQ.out.fastq )
+    }
+
     REMOVE_DUPS( ALIGN_BAM.out.bam )
     SORT_BAM( REMOVE_DUPS.out.unmarked )
     if( params.usats_probes_picard == 'false') {
@@ -174,6 +181,52 @@ process FASTQC {
   
   # run fastqc on read 1 and read 2 FASTQ files
   fastqc ${read1} ${read2}
+
+  """
+}
+
+
+// Transcriptome filtering (optional)
+
+process TRANSCRIPTOME_FILTERING {
+
+  time '10h'
+  cpus 4
+  memory '32 GB'
+
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+
+  input:
+    // load concatenated FASTQ files
+    tuple val( sampleID ), val( sex ), path( read1 ), path( read2 ), val( trio ), val( sampleType ), val(opticalDistance)
+
+  output:
+    // output channel with filtered FASTQ files
+    tuple val( sampleID ), val( sex ), path( "${sampleID}.R1.filtered.fastq.gz" ), path( "${sampleID}.R2.filtered.fastq.gz" ), val( trio ), val( sampleType ), val(opticalDistance), emit: fastq
+    // Save metrics
+    path ( "${sampleID}.STAR.Log.final.out" )
+    path ( "${sampleID}.STAR.splicemetrics.txt" )
+
+  script:
+  """
+  module purge
+  module load ${params.cutadapt}
+  module load ${params.star}
+  module load ${params.seqkit}
+  module load ${params.samtools}
+
+  cutadapt -j 4 -m 20 -a ${params.cutadapt_read1_adapter} -A ${params.cutadapt_read2_adapter} -o ${sampleID}.R1.trimmed.fastq.gz -p ${sampleID}.R2.trimmed.fastq.gz ${read1} ${read2}
+
+  STAR --runMode alignReads --outSAMmapqUnique 60 --outSAMattrRGline ID:${sampleID} SM:${sampleID} --genomeDir ${params.star_reference_dir} --readFilesIn ${sampleID}.R1.trimmed.fastq.gz ${sampleID}.R2.trimmed.fastq.gz --readFilesCommand zcat --outFilterMultimapNmax 10 --outFileNamePrefix ${sampleID}.STAR. --outSAMtype BAM Unsorted
+
+  SPLICEREADS=\$(grep "Number of splices: Total" ${sampleID}.STAR.Log.final.out | cut -f 2)
+  TOTALREADS=\$(grep "Number of input reads" ${sampleID}.STAR.Log.final.out | cut -f 2)
+  echo -e "\$SPLICEREADS\t\$TOTALREADS" | awk '{print "Splice read statistics (splice reads/totalreads): " \$1 " / " \$2 " = " \$1/\$2}' > ${sampleID}.STAR.splicemetrics.txt
+
+  samtools view ${sampleID}.STAR.Aligned.out.bam | awk '\$6 ~ /N/' | cut -f 1 | sort | uniq > splicereadnames.txt
+
+  seqkit grep -v -f splicereadnames.txt -o ${sampleID}.R1.filtered.fastq.gz ${read1}
+  seqkit grep -v -f splicereadnames.txt -o ${sampleID}.R2.filtered.fastq.gz ${read2}
 
   """
 }

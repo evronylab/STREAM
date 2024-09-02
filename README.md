@@ -45,6 +45,9 @@ The following tools must be available. The paths to them is then specified in th
 - [bedtools](https://github.com/arq5x/bedtools2/releases)
 - [bcftools](http://www.htslib.org/download/)
 - [R](https://cran.r-project.org)
+- [cutadapt](https://cutadapt.readthedocs.io) (If performing transcriptome filtering, see below)
+- [STAR](https://github.com/alexdobin/STAR) (If performing transcriptome filtering, see below)
+- [seqkit](https://bioinf.shenwei.me/seqkit) (If performing transcriptome filtering, see below)
 - R packages:
   - [dplyr](https://cloud.r-project.org/web/packages/dplyr/index.html)
   - [tidyr](https://cloud.r-project.org/web/packages/tidyr/index.html)
@@ -143,6 +146,7 @@ A Nextflow configuration file (see [example](config_templates/nextflow.config)) 
 - The input type (params.input_type = 'fastq' or 'cram')
 - The 'Samples list' file (params.samples)
 - Paths to the reference genome and index
+- Paths to reference genome for STAR transcriptome alignment for 'transcriptome filtering' (see below). This can be generated with the command: STAR --runMode genomeGenerate --genomeDir [genomedir] --genomeFastaFiles [genome fasta] --sjdbGTFfile [GENCODE gtf file] --sjdbOverhang 100"
 - Paths to loci to analyze
 - Output path and file names
 - Paths to tools and scripts
@@ -163,6 +167,8 @@ Note: filters related to read depth can have different values specified for each
 
 ### A. Genotype calling
 The genotype calling step applies all three callers to produce initial unfiltered genotype calls for each sample and locus. The main output is an RDS data frame containing the genotype calls.
+
+The genotype calling can optionally perform 'transcriptome filtering' of FASTQ reads prior to alignment for STR genotype calling. This is performed by aligning reads to the transcriptome and then filtering out those reads that align as spliced reads. This can be useful when analyzing DNA sequencing reads from multi-omic RNA+DNA single-cell samples that have some residual RNA-derived reads in the DNA data.
 
 The genotype calling step is run with the following command:
 `nextflow -C nextflow.config run usat_calling.nf`
@@ -193,14 +199,16 @@ In the hipstr_aln_viz directory:
 In the sample-specific results directory:
 1. [sampleID].cram and [sampleID].cram.crai: aligned CRAM file and index with optical duplicates removed and coordinate-sorted
 2. [sampleID].R1_fastqc.html and [sampleID].R2_fastqc.html: fastqc reports (FASTQ start only)
-3. [sampleID].markdup.metrics.txt: duplication metrics report, output of Picard MarkDuplicates (FASTQ start only)
-4. Picard CollectHsMetrics reports:
+3. [sampleID].STAR.Log.final.out: Output of STAR transcriptome alignment if performing optional transcriptome filtering
+4. [sampleID].STAR.splicemetrics.txt: Fraction of total reads that are splice reads per transcriptome alignment, which are filtered from FASTQ files
+5. [sampleID].markdup.metrics.txt: duplication metrics report, output of Picard MarkDuplicates (FASTQ start only)
+6. Picard CollectHsMetrics reports:
    - [sampleID]_picard_usats.txt: output of CollectHsMetrics when the microsatellite coordinates are input as TARGETS and the probe coordinates are input as BAITS
    - [sampleID]_picard_probes.txt: output of CollectHsMetrics when the probe coordinates are input as both TARGETS and BAITS
-5. [sampleID]_hipstr.vcf.gz, [sampleID]_gangstr.vcf.gz, [sampleID]_eh.vcf.gz: output VCFs from the three callers
-6. [sampleID]_bedtools.txt: output of bedtools coverage; the only columns retained are the name of the locus and the number of reads overlapping the full interval
-7. [sampleID].GATK.g.vcf.gz: output of GATK HaplotypeCaller, if a supplementary panel was specified
-8. [sampleID].GATK.vcf.gz: output of GATK GenotypeGVCFs, if a supplementary panel was specified
+7. [sampleID]_hipstr.vcf.gz, [sampleID]_gangstr.vcf.gz, [sampleID]_eh.vcf.gz: output VCFs from the three callers
+8. [sampleID]_bedtools.txt: output of bedtools coverage; the only columns retained are the name of the locus and the number of reads overlapping the full interval
+9. [sampleID].GATK.g.vcf.gz: output of GATK HaplotypeCaller, if a supplementary panel was specified
+10. [sampleID].GATK.vcf.gz: output of GATK GenotypeGVCFs, if a supplementary panel was specified
 
 ### B. Filtering outputs
 1. YAML config file: a copy of the configuration file defining the filtering thresholds used by the script, for documentation
