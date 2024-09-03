@@ -209,7 +209,6 @@ process TRANSCRIPTOME_FILTERING {
 
   script:
   """
-  module purge
   module load ${params.cutadapt}
   module load ${params.star}
   module load ${params.seqkit}
