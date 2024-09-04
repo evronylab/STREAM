@@ -38,6 +38,7 @@ The following tools must be available. The paths to them is then specified in th
 - [bwa](https://github.com/lh3/bwa)
 - [samtools](http://www.htslib.org/download/)
 - [GATK](https://github.com/broadinstitute/gatk/releases)
+- java/jdk
 - [Picard .jar file](https://github.com/broadinstitute/picard/releases)
 - [HipSTR](https://github.com/HipSTR-Tool/HipSTR/releases)
 - [GangSTR](https://github.com/gymreklab/GangSTR/releases)

@@ -279,7 +279,7 @@ process REMOVE_DUPS {
 
   script:
   """
-  module load ${params.gatk}
+  module load ${params.gatk} ${params.jdk}
   
   # Remove optical duplicates from BAM
   java -jar ${params.picard} MarkDuplicates \\
@@ -327,7 +327,7 @@ process SORT_BAM {
 
   script:
   """
-  module load ${params.samtools}
+  module load ${params.jdk} ${params.samtools}
   
   # Sort BAM  
   java -jar ${params.picard} SortSam \\
