@@ -194,7 +194,7 @@ process TRANSCRIPTOME_FILTERING {
   cpus 4
   memory '32 GB'
 
-  publishDir("${params.results}/${sampleID}_results", mode: 'copy')
+  publishDir("${params.results}/${sampleID}_results", mode: 'copy', pattern: "*.STAR.*")
 
   input:
     // load concatenated FASTQ files
