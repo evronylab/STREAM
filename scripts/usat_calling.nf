@@ -550,7 +550,7 @@ process SPLIT_VCF {
 
 process EXPANSION_HUNTER {
 
-  time '144h'
+  time '167h'
 
   cpus 14
 
