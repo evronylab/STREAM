@@ -682,7 +682,7 @@ process SUPP_VARIANTS {
 
   time '8h'
   cpus 2
-  memory '32 GB'
+  memory '64 GB'
 
   publishDir("${params.results}/${sampleID}_results", mode: 'copy')
 
