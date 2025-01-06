@@ -550,7 +550,7 @@ process SPLIT_VCF {
 
 process EXPANSION_HUNTER {
 
-  time '72h'
+  time '168h'
 
   cpus 14
 
@@ -932,7 +932,7 @@ process JOIN_CALLS {
 process JOIN_SAMPLES {
 
   time '2h'
-  memory '32 GB'
+  memory '128 GB'
 
   publishDir("${params.results}", mode: 'copy')
 
