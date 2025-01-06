@@ -552,7 +552,7 @@ process EXPANSION_HUNTER {
 
   time '168h'
 
-  cpus 24
+  cpus 14
 
   memory '128 GB'
 
@@ -591,7 +591,7 @@ process EXPANSION_HUNTER {
       --variant-catalog ${params.eh_usats} \
       --output-prefix ${sampleID}_eh \
       --sex \${eh_sex} \
-      --threads 24; bgzip -f ${sampleID}_eh.vcf; bcftools index ${sampleID}_eh.vcf.gz
+      --threads 12; bgzip -f ${sampleID}_eh.vcf; bcftools index ${sampleID}_eh.vcf.gz
 
   """
 }
