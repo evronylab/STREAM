@@ -216,7 +216,8 @@ process TRANSCRIPTOME_FILTERING {
 
   cutadapt -j 4 -m 20 -a ${params.cutadapt_read1_adapter} -A ${params.cutadapt_read2_adapter} -o ${sampleID}.R1.trimmed.fastq.gz -p ${sampleID}.R2.trimmed.fastq.gz ${read1} ${read2}
 
-  STAR --runMode alignReads --outSAMmapqUnique 60 --outSAMattrRGline ID:${sampleID} SM:${sampleID} --genomeDir ${params.star_reference_dir} --readFilesIn ${sampleID}.R1.trimmed.fastq.gz ${sampleID}.R2.trimmed.fastq.gz --readFilesCommand zcat --outFilterMultimapNmax 10 --outFileNamePrefix ${sampleID}.STAR. --outSAMtype BAM Unsorted
+  STARtmpdir=\$(mktemp -d -p /vast/evrong01)
+  STAR --outTmpDir \$STARtmpdir --runMode alignReads --outSAMmapqUnique 60 --outSAMattrRGline ID:${sampleID} SM:${sampleID} --genomeDir ${params.star_reference_dir} --readFilesIn ${sampleID}.R1.trimmed.fastq.gz ${sampleID}.R2.trimmed.fastq.gz --readFilesCommand zcat --outFilterMultimapNmax 10 --outFileNamePrefix ${sampleID}.STAR. --outSAMtype BAM Unsorted
 
   SPLICEREADS=\$(grep "Number of splices: Total" ${sampleID}.STAR.Log.final.out | cut -f 2)
   TOTALREADS=\$(grep "Number of input reads" ${sampleID}.STAR.Log.final.out | cut -f 2)
@@ -226,6 +227,8 @@ process TRANSCRIPTOME_FILTERING {
 
   seqkit grep -v -f splicereadnames.txt -o ${sampleID}.R1.filtered.fastq.gz ${read1}
   seqkit grep -v -f splicereadnames.txt -o ${sampleID}.R2.filtered.fastq.gz ${read2}
+
+  rm -rf \$STARtmpdir
 
   """
 }
