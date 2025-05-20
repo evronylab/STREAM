@@ -696,4 +696,4 @@ filtered_results <- rbind(nonA_loci, A_loci) %>%
 saveRDS(filtered_results, file = paste0(sub('\\.rds$', '', args[1]),"_genotypes.rds"))
 
 # Save filtering config in same folder as output RDS
-file.copy(args[2], dirname(args[1]), overwrite = T)
+file.copy(args[2], dirname(args[1]))
